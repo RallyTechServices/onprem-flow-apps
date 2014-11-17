@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OnPrem CycleTime</title>
+    <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Sun Nov 16 2014 16:20:28 GMT-0800 (PST) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Sun Nov 16 2014 16:20:28 GMT-0800 (PST)";
+        var CHECKSUM = 9816091604;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Ext.Component',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+     title: "Build Information",
+    
+    renderTpl: "<div id='{id}-infolinkWrap' class='tsinfolink'>i</div>",
+
+    initComponent: function() {
+        this.callParent(arguments);
+       
+    },
+    
+    onRender: function() {
+        this.callParent(arguments);
+        this.mon(this.el,'click',this.onClick,this);
+    },
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+        
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+    
+        return chk;
+    },
+    _checkChecksum: function(container) {
+        var me = this;
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    if ( CHECKSUM !== me._generateChecksum(text) ) {
+                        console.log("Checksums don't match!");
+                        if ( me.dialog ) {
+                            me.dialog.add({xtype:'container',html:'Checksums do not match'});
+                        }
+                    }
+                }
+            }
+        });
+    },
+    onClick: function(e) {
+        var me = this;
+        this._checkChecksum(this);
+        
+        var dialog_items = [];
+        
+        if ( this.informationHtml ) {
+            dialog_items.push({
+                xtype:'container',
+                html: this.informationHtml
+            });
+        }
+                
+        dialog_items.push({
+            xtype:'container',
+            html:"This app was created by the Rally Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            dialog_items.push({
+                xtype:'container',
+                html:'Build date/time: ' + APP_BUILD_DATE
+            });
+        }
+        
+        if (this.dialog){this.dialog.destroy();}
+        this.dialog = Ext.create('Rally.ui.dialog.Dialog',{
+            defaults: { padding: 5, margin: 5 },
+            closable: true,
+            draggable: true,
+            title: me.title,
+            items: dialog_items
+        });
+        this.dialog.show();
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('Rally.technicalservices.SettingsDialog',{
+    extend: 'Rally.ui.dialog.Dialog',
+    alias: 'widget.tssettingsdialog',
+    config: {
+        /* default settings. pass new ones in */
+        title: 'Settings',
+        model: 'HierarchicalRequirement'
+    },
+    items: {
+        xtype: 'panel',
+        border: false,
+        defaults: {
+            padding: 5,
+            margin: 5
+        },
+        items: [
+            {
+                xtype: 'container',
+                itemId: 'model_selector_box'
+            },
+            {
+                xtype: 'container',
+                itemId: 'state_field_selector_box'
+            },
+            {
+                xtype: 'container',
+                itemId: 'start_date_selector_box'
+            },
+            {
+                xtype: 'container',
+                itemId: 'end_date_selector_box'
+            }
+        ]
+    },
+    logger: new Rally.technicalservices.Logger(),
+    
+    constructor: function(config){
+        this.mergeConfig(config);
+        this.callParent([this.config]);
+    },
+    initComponent: function() {
+        this.callParent(arguments);
+        this.addEvents(
+            /**
+             * @event settingsChosen
+             * Fires when user clicks done after making settings choices
+             * @param {Rally.technicalservices.SettingsDialog} this
+             * @param {hash} config settings
+             */
+            'settingsChosen',
+            /**
+             * @event cancelChosen
+             * Fires when user clicks the cancel button
+             */
+            'cancelChosen'
+        );
+
+        this._buildButtons();
+        this._addChoosers();
+
+    },
+    _buildButtons: function() {
+        this.down('panel').addDocked({
+            xtype: 'toolbar',
+            dock: 'bottom',
+            padding: '0 0 10 0',
+            layout: {
+                type: 'hbox',
+                pack: 'center'
+            },
+            ui: 'footer',
+            items: [
+                {
+                    xtype: 'rallybutton',
+                    text: 'Save',
+                    scope: this,
+                    userAction: 'clicked done in dialog',
+                    itemId: 'save_button',
+                    disabled: true,
+                    handler: function() {
+                        this.fireEvent('settingsChosen', this, this._getConfig());
+                        this.close();
+                    }
+                },
+                {
+                    xtype: 'rallybutton',
+                    text: 'Cancel',
+                    handler: function() {
+                        this.fireEvent('cancelChosen');
+                        this.close();
+                    },
+                    scope: this
+                }
+            ]
+        });
+    },
+    _getConfig: function() {
+        var me = this;
+        var config = {
+            start_date: this.start_date,
+            end_date: this.end_date,
+            model: this.model,
+            state_field: this.state_field
+            
+        };
+        
+        return config;
+    },
+    _addChoosers: function() {
+        this._addModelChooser();
+        this._addDateChoosers();
+    },
+    _addDateChoosers: function() {
+        this.down('#start_date_selector_box').add({
+            xtype:'rallydatefield',
+            fieldLabel: 'Start Date',
+            labelWidth: 75,
+            listeners: {
+                scope: this,
+                change: function(timebox) {
+                    this.start_date = timebox.getValue();
+                    this.logger.log("Start date chosen: ", this.start_date);
+                    this._enableButtonIfNecessary();
+                }
+            }
+        });
+        this.down('#end_date_selector_box').add({
+            xtype:'rallydatefield',
+            fieldLabel: 'End Date',
+            labelWidth: 75,
+            listeners: {
+                scope: this,
+                change: function(timebox) {
+                    this.end_date = timebox.getValue();
+                    this.logger.log("Start date chosen: ", this.end_date);
+                    this._enableButtonIfNecessary();
+                }
+            }
+        });
+    },
+    _addModelChooser: function() {
+        var me = this;
+        me.logger.log('_addModelChooser:type', me.model);
+        this.down('#model_selector_box').add({
+            xtype:'rallycombobox',
+            itemId: 'model_chooser',
+            displayField: 'DisplayName',
+            valueField:'TypePath',
+            autoExpand: true,
+            storeConfig: {
+                autoLoad: true,
+                model:'TypeDefinition',
+                filters: [
+                  {property:'Creatable',value:true},
+                  {property:'Restorable',value:true}                ]
+            },
+            fieldLabel: 'Artifact Type',
+            labelWidth: 75,
+            listeners: {
+                scope: this,
+                select: function(cb,new_value){
+                    this.model = cb.getRecord().get('TypePath');
+                    this.logger.log("selection of type:", this.model);
+                    this._addStateFieldSelector(this.model);
+                },
+                ready: function(cb){
+                    this.model = cb.getRecord().get('TypePath');
+                    this.logger.log("ready with type:", this.model);
+                    this._addStateFieldSelector(this.model);
+                }
+            
+            }
+        });
+    },
+    _addStateFieldSelector: function(model){
+        this.down('#state_field_selector_box').removeAll();
+        this.state_field = null;
+        
+        var cb = Ext.create('Rally.ui.combobox.FieldComboBox',{
+            itemId: 'state_field_chooser',
+            model: model,
+            fieldLabel: 'State Field',
+            labelWidth: 75,
+            listeners: {
+                scope: this,
+                change: function(combo) {
+                    this.state_field = combo.getRecord();
+                    this._enableButtonIfNecessary();
+                }
+            }
+        });
+        
+        cb.getStore().on('load',
+            function(store,records) {
+                this._filterOutExceptChoices(store,records);
+                cb.setValue(store.getAt(0));
+            },
+            this
+        );
+        
+        cb.getStore().load();
+        
+        this.down('#state_field_selector_box').add(cb);
+    },
+    _filterOutTextFields: function(field){
+        var attribute_defn = field.attributeDefinition;
+        
+        if ( ! attribute_defn ) {
+            return false;
+        }
+        if ( attribute_defn.ElementName == "RevisionHistory" ) {
+            return false;
+        }
+        if ( attribute_defn ) {
+            var attribute_type = attribute_defn.AttributeType;
+            if ( attribute_type == "TEXT" ) {
+                return Ext.Array.contains(this.multi_field_list,field.name);
+                return false;
+            }
+        } else {
+            return false;
+        }
+        return true;
+    },
+    _filterInPossibleMultiFields: function(field){
+        var attribute_defn = field.attributeDefinition;
+        if ( field.name == "Description" || field.name == "Notes" ) {
+            return false;
+        }
+        if ( attribute_defn ) {
+            var attribute_type = attribute_defn.AttributeType;
+            if ( attribute_type == "TEXT" ) {
+                return true;
+            }
+        } else {
+            return false;
+        }
+        return false;
+    },
+    _filterOutExceptChoices: function(store,records) {
+        store.filter([{
+            filterFn:function(field){ 
+                if ( field && field.get('fieldDefinition') && field.get('fieldDefinition').attributeDefinition) {
+                    var attribute_type = field.get('fieldDefinition').attributeDefinition.AttributeType;
+    
+                    if ( attribute_type == "STRING" || attribute_type == "STATE" ) {
+                        if ( field.get('fieldDefinition').attributeDefinition.Constrained ) {
+                            return true;
+                        }
+                    }
+                    if ( field.get('name') === 'State' ) { 
+                        return true;
+                    }
+                }
+                return false;
+            } 
+        }]);
+    },
+    _enableButtonIfNecessary:function(){
+        var required_fields = [this.start_date, this.end_date, this.model, this.state_field];
+        for ( var i=0;i<required_fields.length; i++ ) {
+            if ( !required_fields[i] ) {
+                this.down('#save_button').setDisabled(true);
+                return;
+            }
+        }
+        
+        this.down('#save_button').setDisabled(false);
+    }
+    
+});
+Ext.define('CustomApp', {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    margin: 10,
+    defaults: { margin: 5 },
+    items: [
+        {xtype:'container',itemId:'selector_box'},
+        {xtype:'container',itemId:'display_box'},
+        {xtype:'tsinfolink'}
+    ],
+    launch: function() {
+        this._addButton(this.down('#selector_box'));
+      
+    },
+    _addButton: function(container){
+        container.add({
+            xtype:'rallybutton',
+            text: 'Settings',
+            listeners: {
+                scope: this,
+                click: function(button){
+                    this.setLoading("Gathering data...");
+                    Ext.create('Rally.technicalservices.SettingsDialog',{
+                        autoShow: true,
+                        listeners: {
+                            scope: this,
+                            settingsChosen: function(dialog,settings) {
+                                this.logger.log("Found settings: ", settings);
+                                this._processWithSettings(settings);
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    },
+    /*
+     * expect settings to look like: 
+     * {
+     *      start_date: date,
+     *      end_date: date,
+     *      model: type path,  // TODO: change to full model
+     *      state_field: field object
+     * }
+     */
+    _processWithSettings: function(settings){
+       this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
+           scope: this,
+           success: this._makeGrid,
+           failure: function(message){
+               this.down('#display_box').add({xtype:'container',html:'Problem: '+message});
+           }
+       });
+    },
+    _makeGrid: function(results){
+        // expect to get back an array of hashes, where the key to each hash is a formatted id,
+        // so we can just merge into a single hash
+        var items = {};
+        Ext.Array.each(results,function(result){
+            Ext.Object.merge(items,result);
+        });
+        this.logger.log("Results:", items);
+        var records = this._calculateCycleTime(items);
+        
+        this.logger.log("Ready for store:", records);
+        
+        var store = Ext.create('Rally.data.custom.Store',{
+            data: records
+        });
+        
+        this.down('#display_box').removeAll();
+        this.down('#display_box').add({
+            xtype:'rallygrid',
+            store: store,
+            showRowActionsColumn: false,
+            columnCfgs: [
+                {
+                    text: 'id',
+                    dataIndex:'FormattedID'
+                },
+                {
+                    text: 'Name',
+                    dataIndex:'Name',
+                    flex: 1
+                },
+                {
+                    text: 'Entry',
+                    dataIndex:'__start_date',
+                    flex: 1
+                },
+                {
+                    text: 'Exit',
+                    dataIndex:'__end_date',
+                    flex: 1
+                },
+                {
+                    text: 'Cycle Time (days)',
+                    dataIndex:'__cycle_time'
+                }
+            ]
+        });
+        
+        this.setLoading(false);
+    },
+    /* expecting a hash that looks like
+     * {
+     *     record: a data record,
+     *     revisions: an array of revision records
+     * }
+     * 
+     * want to return an array of records with calculated data
+     */
+    _calculateCycleTime:function(item_hashes){
+        this.setLoading("Calculating cycle times...");
+        this.logger.log("Calculating cycle time using:", Ext.clone(item_hashes));
+        var records = [];
+        
+        Ext.Object.each(item_hashes, function(key,item_hash){
+            var record = item_hash.record;
+            var revisions = item_hash.revisions;
+            // TODO: Actually parse the revisions
+            var start_date = revisions[revisions.length-1].get('CreationDate');
+            var end_date = revisions[0].get('CreationDate');
+            this.logger.log("do math on ", start_date, end_date);
+            var cycle_time = Rally.util.DateTime.getDifference(end_date, start_date, 'day');
+            
+            record.set("__start_date",start_date);
+            record.set("__end_date", end_date);
+            record.set('__cycle_time', cycle_time);
+            
+            records.push(record);
+        },this);
+        
+        
+        return records;
+    },
+    _getStories: function(model, state_field, start_date, end_date){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        this.logger.log("Getting ", model, ".", state_field, " last updated between ", start_date, " and " , end_date);
+        
+        var state_field_name = state_field;
+        var state_field_name_alternative = state_field;
+        if ( typeof(state_field) != "string" ) {
+            state_field_name = state_field.get('name');
+            state_field_alternative = state_field.get('value');
+        }
+        // for a little bit of performance help, find things that changed
+        // between the begin and end dates
+        var filters = [
+            { property:'LastUpdateDate', operator: '>=', value: Rally.util.DateTime.toIsoString(start_date)}
+        ];
+        Ext.create('Rally.data.wsapi.Store', {
+            model: model,
+            fetch: ['RevisionHistory',state_field_name,'Revisions','FormattedID','Name','ObjectID'],
+            filters: filters,
+            autoLoad: true,
+            listeners: {
+                scope: this,
+                load: function(store, records, successful) {
+                    if (successful){
+                        //this.logger.log("Found records:", records.length, records);
+                        var promises = [];
+                        Ext.Array.each(records,function(record){
+                            var p = function(){
+                                return me._getHistoryForRecord(record,state_field,start_date, end_date);
+                            }
+                            promises.push(p);
+                        },this);
+                        
+                        //this.logger.log("Executing ", promises.length, " promises");
+                        Deft.Chain.parallel(promises).then({
+                            success: function(histories) {
+                                deferred.resolve(histories);
+                            },
+                            failure: deferred.reject
+                        });
+                        
+                    } else {
+                        deferred.reject('Failed to load store for model [' + model_name + '] and fields [' + model_fields.join(',') + ']');
+                    }
+                }
+            }
+        });
+        return deferred.promise;
+    },
+    _getHistoryForRecord: function(record,state_field,start_date, end_date) {
+        var deferred = Ext.create('Deft.Deferred');
+        //this.logger.log('getting history for ', record);
+        
+        var date_filters = Ext.create('Rally.data.wsapi.Filter',{
+            property:'CreationDate',
+            operator:'>=',
+            value: Rally.util.DateTime.toIsoString(start_date)
+        }).and(Ext.create('Rally.data.wsapi.Filter',{
+            property:'CreationDate',
+            operator:'<=',
+            value: Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(end_date,'day'))
+        }));
+        
+        var state_field_name = state_field;
+        var state_field_name_alternative = state_field;
+        if ( typeof(state_field) != "string" ) {
+            state_field_name = state_field.get('name');
+            state_field_name_alternative = state_field.get('value');
+        }
+        
+        // contains searches are case insensitive, so 
+        // TODO: deal with possibility that the name of the field is in the description change
+        //       without changing the field itself (like in the name or something)
+        var state_selection_filters = Ext.create('Rally.data.wsapi.Filter',{
+            property:'Description', 
+            operator:'contains',
+            value: Ext.util.Format.uppercase(state_field_name)
+        }).or(Ext.create('Rally.data.wsapi.Filter',{
+            property:'Description', 
+            operator:'contains',
+            value: Ext.util.Format.uppercase(state_field_name_alternative)
+        }));
+        
+        var rev_history_filter = Ext.create('Rally.data.wsapi.Filter',{
+            property:"RevisionHistory.ObjectID",
+            value: record.get('RevisionHistory').ObjectID
+        });
+        
+        var filters = rev_history_filter.and( date_filters.and(state_selection_filters) );
+        // use a regular wsapi store instead of laoding the collection because I'm having
+        // trouble with getting the collection to recognize the filters.
+        Ext.create('Rally.data.wsapi.Store',{
+            autoLoad: true,
+            model:'Revision',
+            filters: filters,
+            fetch: ['Description','CreationDate'],
+            sorters: [{property:'CreationDate',direction:'DESC'}],
+            listeners: {
+                scope: this,
+                load: function(store,revisions){
+                    //this.logger.log('revs for ', record.get('FormattedID'), ':',revisions);
+                    var rev_hash = {};
+                    // Only hold on to this set if there are 2 revisions (because we want to have transition
+                    // into the start AND the end states
+                    if ( revisions.length > 1 ) {
+                        rev_hash[record.get('FormattedID')] = {record: record, revisions: revisions};
+                    }
+                    deferred.resolve(rev_hash);
+                }
+            }
+        });
+
+        return deferred.promise;        
+    }
+});
+            
+               Rally.launchApp('CustomApp', {
+                   name: 'OnPrem CycleTime'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+    </style>
+
+</head>
+<body></body>
+</html>

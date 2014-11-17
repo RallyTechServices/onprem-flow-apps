@@ -1,0 +1,6 @@
+{
+    "name": "OnPrem CycleTime",
+    "className": "CustomApp",
+    "server": "https://rally1.rallydev.com",
+    "sdk": "2.0rc3"
+}
