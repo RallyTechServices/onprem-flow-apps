@@ -9,26 +9,43 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
     items: {
         xtype: 'panel',
         border: false,
+        layout: { type: 'hbox' },
         defaults: {
             padding: 5,
             margin: 5
         },
         items: [
-            {
-                xtype: 'container',
-                itemId: 'model_selector_box'
+            { 
+                xtype: 'container', 
+                items: [{
+                    xtype: 'container',
+                    itemId: 'model_selector_box'
+                },
+                {
+                    xtype: 'container',
+                    itemId: 'state_field_selector_box'
+                },
+                {
+                    xtype: 'container',
+                    itemId: 'state_field_start_value_selector_box'
+                },
+                {
+                    xtype: 'container',
+                    itemId: 'state_field_end_value_selector_box'
+                }]
             },
-            {
+            { 
                 xtype: 'container',
-                itemId: 'state_field_selector_box'
-            },
-            {
-                xtype: 'container',
-                itemId: 'start_date_selector_box'
-            },
-            {
-                xtype: 'container',
-                itemId: 'end_date_selector_box'
+                items: [
+                    {
+                        xtype: 'container',
+                        itemId: 'start_date_selector_box'
+                    },
+                    {
+                        xtype: 'container',
+                        itemId: 'end_date_selector_box'
+                    }
+                ]
             }
         ]
     },
@@ -185,6 +202,7 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
                 scope: this,
                 change: function(combo) {
                     this.state_field = combo.getRecord();
+                    this._addStateFieldValueSelectors(model, this.state_field);
                     this._enableButtonIfNecessary();
                 }
             }
@@ -201,6 +219,44 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
         cb.getStore().load();
         
         this.down('#state_field_selector_box').add(cb);
+    },
+    _addStateFieldValueSelectors: function(model,state_field){
+        this.down('#state_field_start_value_selector_box').removeAll();
+        this.down('#state_field_end_value_selector_box').removeAll();
+        
+        this.start_state = null;
+        this.end_state = null;
+        
+        this.down('#state_field_start_value_selector_box').add({
+            xtype:'rallyfieldvaluecombobox',
+            model: model,
+            field: state_field.get('value'),
+            fieldLabel: 'Start Value',
+            labelWidth: 75,
+            listeners: {
+                scope: this,
+                change: function(combo) {
+                    this.start_state = combo.getRecord();
+                    this._enableButtonIfNecessary();
+                }
+            }
+        });
+ 
+        this.down('#state_field_end_value_selector_box').add({
+            xtype:'rallyfieldvaluecombobox',
+            model: model,
+            field: state_field.get('value'),
+            fieldLabel: 'End Value',
+            labelWidth: 75,
+            listeners: {
+                scope: this,
+                change: function(combo) {
+                    this.end_state = combo.getRecord();
+                    this._enableButtonIfNecessary();
+                }
+            }
+        });
+        
     },
     _filterOutTextFields: function(field){
         var attribute_defn = field.attributeDefinition;
@@ -257,7 +313,7 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
         }]);
     },
     _enableButtonIfNecessary:function(){
-        var required_fields = [this.start_date, this.end_date, this.model, this.state_field];
+        var required_fields = [this.start_date, this.end_date, this.model, this.state_field, this.start_state, this.end_state];
         for ( var i=0;i<required_fields.length; i++ ) {
             if ( !required_fields[i] ) {
                 this.down('#save_button').setDisabled(true);
