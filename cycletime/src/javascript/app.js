@@ -2,6 +2,7 @@ Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
+    skipWeekends: true,
     margin: 10,
     defaults: { margin: 5 },
     items: [
@@ -45,6 +46,7 @@ Ext.define('CustomApp', {
      * }
      */
     _processWithSettings: function(settings){
+       this.settings = settings;
        this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
            scope: this,
            success: this._makeGrid,
@@ -116,20 +118,27 @@ Ext.define('CustomApp', {
         this.logger.log("Calculating cycle time using:", Ext.clone(item_hashes));
         var records = [];
         
+        var field_name = this.settings.state_field.get('name');
+        var start_state = this.settings.start_state;
+        var end_state = this.settings.end_state;
+        
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
             // TODO: Actually parse the revisions
-            var start_date = revisions[revisions.length-1].get('CreationDate');
-            var end_date = revisions[0].get('CreationDate');
-            this.logger.log("do math on ", start_date, end_date);
-            var cycle_time = Rally.util.DateTime.getDifference(end_date, start_date, 'day');
-            
-            record.set("__start_date",start_date);
-            record.set("__end_date", end_date);
-            record.set('__cycle_time', cycle_time);
-            
-            records.push(record);
+            var found_revisions = found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            if ( found_revisions.length == 2 ) {
+                var start_date = revisions[1].get('CreationDate');
+                var end_date = revisions[0].get('CreationDate');
+                this.logger.log("do math on ", start_date, end_date);
+                var cycle_time = Rally.technicalservices.util.Utilities.daysBetween(end_date,start_date,this.skipWeekends);
+                                
+                record.set("__start_date",start_date);
+                record.set("__end_date", end_date);
+                record.set('__cycle_time', cycle_time);
+                
+                records.push(record);
+            }
         },this);
         
         
@@ -144,7 +153,8 @@ Ext.define('CustomApp', {
         var state_field_name_alternative = state_field;
         if ( typeof(state_field) != "string" ) {
             state_field_name = state_field.get('name');
-            state_field_alternative = state_field.get('value');
+            state_field_name_alternative = state_field.get('value');
+            this.logger.log("Checking ", state_field_name, state_field_name_alternative);
         }
         // for a little bit of performance help, find things that changed
         // between the begin and end dates

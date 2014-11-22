@@ -117,8 +117,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             start_date: this.start_date,
             end_date: this.end_date,
             model: this.model,
-            state_field: this.state_field
-            
+            state_field: this.state_field,
+            start_state: this.start_state,
+            end_state: this.end_state
         };
         
         return config;
