@@ -3,6 +3,7 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     skipWeekends: true,
+    grid: null,
     margin: 10,
     defaults: { margin: 5 },
     items: [
@@ -11,10 +12,10 @@ Ext.define('CustomApp', {
         {xtype:'tsinfolink'}
     ],
     launch: function() {
-        this._addButton(this.down('#selector_box'));
+        this._addButtons(this.down('#selector_box'));
       
     },
-    _addButton: function(container){
+    _addButtons: function(container){
         container.add({
             xtype:'rallybutton',
             text: 'Settings',
@@ -35,6 +36,18 @@ Ext.define('CustomApp', {
                 }
             }
         });
+        
+        container.add({
+            xtype:'rallybutton',
+            itemId:'save_button',
+            text:'Save As CSV',
+            disabled: true,
+            scope: this,
+            handler: function() {
+                var csv = this._getCSVFromGrid();
+                this._saveCSVToFile(csv,'cycle_time.csv',{type:'text/csv;charset=utf-8'});
+            }
+        });
     },
     /*
      * expect settings to look like: 
@@ -47,6 +60,8 @@ Ext.define('CustomApp', {
      */
     _processWithSettings: function(settings){
        this.settings = settings;
+       
+       this.down('#save_button').setDisabled(true);
        this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
            scope: this,
            success: this._makeGrid,
@@ -72,7 +87,7 @@ Ext.define('CustomApp', {
         });
         
         this.down('#display_box').removeAll();
-        this.down('#display_box').add({
+        this.grid = this.down('#display_box').add({
             xtype:'rallygrid',
             store: store,
             showRowActionsColumn: false,
@@ -103,6 +118,10 @@ Ext.define('CustomApp', {
             ]
         });
         
+        if ( records.length > 0 ) {
+            this.down('#save_button').setDisabled(false);
+            this.records = records;
+        }
         this.setLoading(false);
     },
     /* expecting a hash that looks like
@@ -125,7 +144,6 @@ Ext.define('CustomApp', {
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
-            // TODO: Actually parse the revisions
             var found_revisions = found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
             if ( found_revisions.length == 2 ) {
                 var start_date = revisions[1].get('CreationDate');
@@ -140,7 +158,6 @@ Ext.define('CustomApp', {
                 records.push(record);
             }
         },this);
-        
         
         return records;
     },
@@ -259,5 +276,39 @@ Ext.define('CustomApp', {
         });
 
         return deferred.promise;        
+    },
+    _getCSVFromGrid: function() {
+        var csv = [];
+        if ( this.grid ) {
+            var records = this.grid.getStore().getData().items;
+            var columns = this.grid.getColumnCfgs();
+            
+            this.logger.log("records in grid", records);
+            this.logger.log("columns", columns);
+            var header = this._getHeaderFromColumns(columns);
+            csv.push(header);
+            
+            Ext.Array.each(records,function(record){
+                var line_array = [];
+                Ext.Array.each(columns,function(column){
+                    line_array.push('"' + record.get(column.dataIndex) + '"');
+                });
+                csv.push(line_array.join(','));
+            });
+        }
+        
+        return csv.join('\r\n');
+    },
+    _getHeaderFromColumns: function(columns){
+        var header = [];
+        Ext.Array.each(columns,function(column){
+            header.push(column.text);
+        });
+        return header.join(',');
+    },
+    _saveCSVToFile:function(csv,file_name,type_object){
+        this.logger.log("saving csv: ", csv);
+        var blob = new Blob([csv],type_object);
+        saveAs(blob,file_name);
     }
 });
