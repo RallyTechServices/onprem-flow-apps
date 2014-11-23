@@ -133,6 +133,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             xtype:'rallydatefield',
             fieldLabel: 'Start Date',
             labelWidth: 75,
+            stateful: true,
+            stateId: 'rally.technicalservices.cycletime.start_date_chooser',
+            stateEvents: ['change'],
             listeners: {
                 scope: this,
                 change: function(timebox) {
@@ -146,6 +149,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             xtype:'rallydatefield',
             fieldLabel: 'End Date',
             labelWidth: 75,
+            stateful: true,
+            stateId: 'rally.technicalservices.cycletime.end_date_chooser',
+            stateEvents: ['change'],
             listeners: {
                 scope: this,
                 change: function(timebox) {
@@ -165,6 +171,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             displayField: 'DisplayName',
             valueField:'TypePath',
             autoExpand: true,
+            stateful: true,
+            stateId: 'rally.technicalservices.cycletime.model_chooser',
+            stateEvents: ['select'],
             storeConfig: {
                 autoLoad: true,
                 model:'TypeDefinition',
@@ -199,6 +208,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             model: model,
             fieldLabel: 'State Field',
             labelWidth: 75,
+            stateful: true,
+            stateId: 'rally.technicalservices.cycletime.state_field_chooser',
+            stateEvents: ['select'],
             listeners: {
                 scope: this,
                 change: function(combo) {
@@ -234,6 +246,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             field: state_field.get('value'),
             fieldLabel: 'Start Value',
             labelWidth: 75,
+            stateful: true,
+            stateId: 'rally.technicalservices.cycletime.start_value_chooser',
+            stateEvents: ['change'],
             listeners: {
                 scope: this,
                 change: function(combo) {
@@ -249,6 +264,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             field: state_field.get('value'),
             fieldLabel: 'End Value',
             labelWidth: 75,
+            stateful: true,
+            stateId: 'rally.technicalservices.cycletime.end_value_chooser',
+            stateEvents: ['change'],
             listeners: {
                 scope: this,
                 change: function(combo) {
