@@ -143,10 +143,13 @@ Ext.define('CustomApp', {
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
-            var found_revisions = found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            this.logger.log(record.get('FormattedID'));
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            this.logger.log("Found pair of revisions:",found_revisions);
+            
             if ( found_revisions.length == 2 ) {
-                var start_date = revisions[1].get('CreationDate');
-                var end_date = revisions[0].get('CreationDate');
+                var start_date = found_revisions[0].get('CreationDate');
+                var end_date = found_revisions[1].get('CreationDate');
                 this.logger.log("do math on ", start_date, end_date);
                 var cycle_time = Rally.technicalservices.util.Utilities.daysBetween(end_date,start_date,this.skipWeekends);
                                 
@@ -258,7 +261,7 @@ Ext.define('CustomApp', {
             model:'Revision',
             filters: filters,
             fetch: ['Description','CreationDate'],
-            sorters: [{property:'CreationDate',direction:'DESC'}],
+            sorters: [{property:'CreationDate',direction:'ASC'}],
             listeners: {
                 scope: this,
                 load: function(store,revisions){

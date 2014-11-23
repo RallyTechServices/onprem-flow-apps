@@ -49,13 +49,13 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
      */
     findEntryExitRevisions: function(revision_array, field_name, start_state, end_state) {
-        console.log("findEntryExitRevisions",field_name,start_state,end_state);
         var matching_revisions = [];
         var start_revision = null;
         var end_revision = null;
         
         Ext.Array.each( revision_array, function(revision){
             var values = this.findValuesForField(field_name, revision.get('Description'));
+            
             if ( !start_revision && values.new_value == start_state ) {
                 start_revision = revision;
             }
@@ -71,7 +71,6 @@ Ext.define('Rally.technicalservices.util.Parser', {
         return matching_revisions;
     },
     _getMatches: function(string, regex, index) {
-        console.log("Testing ", string, regex);
         var matches = [];
         var all_matches = regex.exec(string);
         if ( Ext.isArray(all_matches) ) {

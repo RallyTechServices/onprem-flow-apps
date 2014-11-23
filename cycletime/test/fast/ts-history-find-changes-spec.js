@@ -67,6 +67,17 @@ describe("Given arrays of revisions",function() {
             expect( found_revisions[0].get('ObjectID') ).toEqual(1);
             expect( found_revisions[1].get('ObjectID') ).toEqual(4);
         });
-
+        
+        it('should return very first start state and very last end state if it enters the end state multiple times', function() {
+            var rev1 = Ext.create('mockRevision',{ ObjectID: 1, Description: "RANK moved up, SCHEDULE STATE changed from [Defined] to [In-Progress]" });
+            var rev2 = Ext.create('mockRevision',{ ObjectID: 2, Description: "RANK moved down, SCHEDULE STATE changed from [In-Progress] to [Accepted]" });
+            var rev3 = Ext.create('mockRevision',{ ObjectID: 3, Description: "RANK moved down, SCHEDULE STATE changed from [Accepted] to [Completed]" });
+            var rev4 = Ext.create('mockRevision',{ ObjectID: 4, Description: "RANK moved down, SCHEDULE STATE changed from [Completed] to [Accepted]" });
+        
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions([rev1,rev2,rev3,rev4], 'Schedule State', 'In-Progress', 'Accepted');
+            expect( found_revisions.length ).toEqual(2);
+            expect( found_revisions[0].get('ObjectID') ).toEqual(1);
+            expect( found_revisions[1].get('ObjectID') ).toEqual(4);
+        });
     });
 });

@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Nov 22 2014 18:23:17 GMT-0800 (PST) -->
+    <!--  Build Date: Sat Nov 22 2014 18:50:37 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Nov 22 2014 18:23:17 GMT-0800 (PST)";
-        var CHECKSUM = 51777691891;
+        var APP_BUILD_DATE = "Sat Nov 22 2014 18:50:37 GMT-0800 (PST)";
+        var CHECKSUM = 51736204359;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -535,13 +535,13 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
      */
     findEntryExitRevisions: function(revision_array, field_name, start_state, end_state) {
-        console.log("findEntryExitRevisions",field_name,start_state,end_state);
         var matching_revisions = [];
         var start_revision = null;
         var end_revision = null;
         
         Ext.Array.each( revision_array, function(revision){
             var values = this.findValuesForField(field_name, revision.get('Description'));
+            
             if ( !start_revision && values.new_value == start_state ) {
                 start_revision = revision;
             }
@@ -557,7 +557,6 @@ Ext.define('Rally.technicalservices.util.Parser', {
         return matching_revisions;
     },
     _getMatches: function(string, regex, index) {
-        console.log("Testing ", string, regex);
         var matches = [];
         var all_matches = regex.exec(string);
         if ( Ext.isArray(all_matches) ) {
@@ -1281,10 +1280,13 @@ Ext.define('CustomApp', {
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
-            var found_revisions = found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            this.logger.log(record.get('FormattedID'));
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            this.logger.log("Found pair of revisions:",found_revisions);
+            
             if ( found_revisions.length == 2 ) {
-                var start_date = revisions[1].get('CreationDate');
-                var end_date = revisions[0].get('CreationDate');
+                var start_date = found_revisions[0].get('CreationDate');
+                var end_date = found_revisions[1].get('CreationDate');
                 this.logger.log("do math on ", start_date, end_date);
                 var cycle_time = Rally.technicalservices.util.Utilities.daysBetween(end_date,start_date,this.skipWeekends);
                                 
@@ -1396,7 +1398,7 @@ Ext.define('CustomApp', {
             model:'Revision',
             filters: filters,
             fetch: ['Description','CreationDate'],
-            sorters: [{property:'CreationDate',direction:'DESC'}],
+            sorters: [{property:'CreationDate',direction:'ASC'}],
             listeners: {
                 scope: this,
                 load: function(store,revisions){
