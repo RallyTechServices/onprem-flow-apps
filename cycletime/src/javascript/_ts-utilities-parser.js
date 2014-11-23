@@ -65,9 +65,18 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         },this);
         
+        if ( end_revision && ! start_revision) {
+            // we got to the end without seeing the start.  
+            // if the first rev is the original then let's assume it was our start
+            if ( revision_array[0].get('Description') == "Original revision" ){
+                start_revision = revision_array[0];
+            }
+        }
+        
         if ( start_revision && end_revision ) {
             matching_revisions = [ start_revision, end_revision];
         }
+        
         return matching_revisions;
     },
     _getMatches: function(string, regex, index) {

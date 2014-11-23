@@ -79,5 +79,15 @@ describe("Given arrays of revisions",function() {
             expect( found_revisions[0].get('ObjectID') ).toEqual(1);
             expect( found_revisions[1].get('ObjectID') ).toEqual(4);
         });
+        
+        it('should assume the creation state is the initial one if provided in the time frame', function() {
+            var rev1 = Ext.create('mockRevision',{ ObjectID: 1, Description: "Original revision" });
+            var rev2 = Ext.create('mockRevision',{ ObjectID: 2, Description: "RANK moved down, SCHEDULE STATE changed from [Defined] to [Accepted]" });
+
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions([rev1,rev2], 'Schedule State', 'Defined', 'Accepted');
+            expect( found_revisions.length ).toEqual(2);
+            expect( found_revisions[0].get('ObjectID') ).toEqual(1);
+            expect( found_revisions[1].get('ObjectID') ).toEqual(2);
+        });
     });
 });

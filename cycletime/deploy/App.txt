@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Nov 22 2014 18:50:37 GMT-0800 (PST) -->
+    <!--  Build Date: Sat Nov 22 2014 19:03:25 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Nov 22 2014 18:50:37 GMT-0800 (PST)";
-        var CHECKSUM = 51736204359;
+        var APP_BUILD_DATE = "Sat Nov 22 2014 19:03:25 GMT-0800 (PST)";
+        var CHECKSUM = 52734143373;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -551,9 +551,18 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         },this);
         
+        if ( end_revision && ! start_revision) {
+            // we got to the end without seeing the start.  
+            // if the first rev is the original then let's assume it was our start
+            if ( revision_array[0].get('Description') == "Original revision" ){
+                start_revision = revision_array[0];
+            }
+        }
+        
         if ( start_revision && end_revision ) {
             matching_revisions = [ start_revision, end_revision];
         }
+        
         return matching_revisions;
     },
     _getMatches: function(string, regex, index) {
@@ -1383,6 +1392,9 @@ Ext.define('CustomApp', {
             property:'Description', 
             operator:'contains',
             value: Ext.util.Format.uppercase(state_field_name_alternative)
+        })).or(Ext.create('Rally.data.wsapi.Filter',{
+            property:'Description',
+            value:'Original revision'
         }));
         
         var rev_history_filter = Ext.create('Rally.data.wsapi.Filter',{

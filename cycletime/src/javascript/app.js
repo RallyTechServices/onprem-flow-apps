@@ -246,6 +246,9 @@ Ext.define('CustomApp', {
             property:'Description', 
             operator:'contains',
             value: Ext.util.Format.uppercase(state_field_name_alternative)
+        })).or(Ext.create('Rally.data.wsapi.Filter',{
+            property:'Description',
+            value:'Original revision'
         }));
         
         var rev_history_filter = Ext.create('Rally.data.wsapi.Filter',{
