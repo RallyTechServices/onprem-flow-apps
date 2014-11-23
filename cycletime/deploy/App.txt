@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Nov 22 2014 18:20:03 GMT-0800 (PST) -->
+    <!--  Build Date: Sat Nov 22 2014 18:23:17 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Nov 22 2014 18:20:03 GMT-0800 (PST)";
-        var CHECKSUM = 51777874708;
+        var APP_BUILD_DATE = "Sat Nov 22 2014 18:23:17 GMT-0800 (PST)";
+        var CHECKSUM = 51777691891;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -1160,7 +1160,6 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 click: function(button){
-                    this.setLoading("Gathering data...");
                     Ext.create('Rally.technicalservices.SettingsDialog',{
                         autoShow: true,
                         listeners: {
@@ -1198,7 +1197,7 @@ Ext.define('CustomApp', {
      */
     _processWithSettings: function(settings){
        this.settings = settings;
-       
+       this.setLoading("Gathering data...");
        this.down('#save_button').setDisabled(true);
        this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
            scope: this,

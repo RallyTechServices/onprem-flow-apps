@@ -22,7 +22,6 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 click: function(button){
-                    this.setLoading("Gathering data...");
                     Ext.create('Rally.technicalservices.SettingsDialog',{
                         autoShow: true,
                         listeners: {
@@ -60,7 +59,7 @@ Ext.define('CustomApp', {
      */
     _processWithSettings: function(settings){
        this.settings = settings;
-       
+       this.setLoading("Gathering data...");
        this.down('#save_button').setDisabled(true);
        this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
            scope: this,
