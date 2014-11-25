@@ -7,8 +7,8 @@ Ext.define('CustomApp', {
     margin: 10,
     defaults: { margin: 5 },
     items: [
-        {xtype:'container',itemId:'selector_box'},
-        {xtype:'container',itemId:'display_box'},
+        {xtype:'container',itemId:'selector_box', defaults: { margin: 5 }},
+        {xtype:'container',itemId:'display_box', defaults: { margin: 5 }},
         {xtype:'tsinfolink'}
     ],
     launch: function() {
@@ -24,6 +24,7 @@ Ext.define('CustomApp', {
                 click: function(button){
                     Ext.create('Rally.technicalservices.SettingsDialog',{
                         autoShow: true,
+                        width: 550,
                         listeners: {
                             scope: this,
                             settingsChosen: function(dialog,settings) {
@@ -225,7 +226,7 @@ Ext.define('CustomApp', {
         }).and(Ext.create('Rally.data.wsapi.Filter',{
             property:'CreationDate',
             operator:'<=',
-            value: Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(end_date,'day'))
+            value: Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(end_date),'day',1))
         }));
         
         var state_field_name = state_field;

@@ -3,14 +3,14 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2013 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Nov 22 2014 19:03:25 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Nov 25 2014 10:19:10 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Nov 22 2014 19:03:25 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Tue Nov 25 2014 10:19:10 GMT-0800 (PST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
-    <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
+    <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
 
     <script type="text/javascript">
         Rally.onReady(function() {

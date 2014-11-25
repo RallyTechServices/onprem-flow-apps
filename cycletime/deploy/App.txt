@@ -3,14 +3,14 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Nov 22 2014 19:03:25 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Nov 25 2014 10:19:10 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Nov 22 2014 19:03:25 GMT-0800 (PST)";
-        var CHECKSUM = 52734143373;
+        var APP_BUILD_DATE = "Tue Nov 25 2014 10:19:10 GMT-0800 (PST)";
+        var CHECKSUM = 52976191956;
     </script>
     
-    <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
+    <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
 
     <script type="text/javascript">
         Rally.onReady(function() {
@@ -388,7 +388,7 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             labelWidth: 75,
             stateful: true,
             stateId: 'rally.technicalservices.cycletime.start_value_chooser',
-            stateEvents: ['change'],
+            stateEvents: ['change','select'],
             listeners: {
                 scope: this,
                 change: function(combo) {
@@ -406,7 +406,7 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             labelWidth: 75,
             stateful: true,
             stateId: 'rally.technicalservices.cycletime.end_value_chooser',
-            stateEvents: ['change'],
+            stateEvents: ['change','select'],
             listeners: {
                 scope: this,
                 change: function(combo) {
@@ -1153,8 +1153,8 @@ Ext.define('CustomApp', {
     margin: 10,
     defaults: { margin: 5 },
     items: [
-        {xtype:'container',itemId:'selector_box'},
-        {xtype:'container',itemId:'display_box'},
+        {xtype:'container',itemId:'selector_box', defaults: { margin: 5 }},
+        {xtype:'container',itemId:'display_box', defaults: { margin: 5 }},
         {xtype:'tsinfolink'}
     ],
     launch: function() {
@@ -1170,6 +1170,7 @@ Ext.define('CustomApp', {
                 click: function(button){
                     Ext.create('Rally.technicalservices.SettingsDialog',{
                         autoShow: true,
+                        width: 550,
                         listeners: {
                             scope: this,
                             settingsChosen: function(dialog,settings) {
@@ -1371,7 +1372,7 @@ Ext.define('CustomApp', {
         }).and(Ext.create('Rally.data.wsapi.Filter',{
             property:'CreationDate',
             operator:'<=',
-            value: Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(end_date,'day'))
+            value: Rally.util.DateTime.toIsoString(Rally.util.DateTime.add(new Date(end_date),'day',1))
         }));
         
         var state_field_name = state_field;

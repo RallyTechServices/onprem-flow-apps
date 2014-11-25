@@ -248,7 +248,7 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             labelWidth: 75,
             stateful: true,
             stateId: 'rally.technicalservices.cycletime.start_value_chooser',
-            stateEvents: ['change'],
+            stateEvents: ['change','select'],
             listeners: {
                 scope: this,
                 change: function(combo) {
@@ -266,7 +266,7 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             labelWidth: 75,
             stateful: true,
             stateId: 'rally.technicalservices.cycletime.end_value_chooser',
-            stateEvents: ['change'],
+            stateEvents: ['change','select'],
             listeners: {
                 scope: this,
                 change: function(combo) {
