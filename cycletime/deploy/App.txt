@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Nov 25 2014 10:19:10 GMT-0800 (PST) -->
+    <!--  Build Date: Wed Nov 26 2014 14:07:09 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Nov 25 2014 10:19:10 GMT-0800 (PST)";
-        var CHECKSUM = 52976191956;
+        var APP_BUILD_DATE = "Wed Nov 26 2014 14:07:09 GMT-0800 (PST)";
+        var CHECKSUM = 53536613205;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -353,6 +353,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             stateEvents: ['select'],
             listeners: {
                 scope: this,
+                beforestaterestore: function(combo,state){
+                    this.state_field = state;
+                },
                 change: function(combo) {
                     this.state_field = combo.getRecord();
                     this._addStateFieldValueSelectors(model, this.state_field);
@@ -364,7 +367,13 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
         cb.getStore().on('load',
             function(store,records) {
                 this._filterOutExceptChoices(store,records);
-                cb.setValue(store.getAt(0));
+                
+                // re set the value after we've filtered out what's there
+                if ( this.state_field ) {
+                    cb.setRawValue(this.state_field);
+                } else {
+                    cb.setValue(store.getAt(0));
+                }
             },
             this
         );

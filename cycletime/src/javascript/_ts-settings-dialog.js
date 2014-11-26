@@ -213,6 +213,9 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
             stateEvents: ['select'],
             listeners: {
                 scope: this,
+                beforestaterestore: function(combo,state){
+                    this.state_field = state;
+                },
                 change: function(combo) {
                     this.state_field = combo.getRecord();
                     this._addStateFieldValueSelectors(model, this.state_field);
@@ -224,7 +227,13 @@ Ext.define('Rally.technicalservices.SettingsDialog',{
         cb.getStore().on('load',
             function(store,records) {
                 this._filterOutExceptChoices(store,records);
-                cb.setValue(store.getAt(0));
+                
+                // re set the value after we've filtered out what's there
+                if ( this.state_field ) {
+                    cb.setRawValue(this.state_field);
+                } else {
+                    cb.setValue(store.getAt(0));
+                }
             },
             this
         );
