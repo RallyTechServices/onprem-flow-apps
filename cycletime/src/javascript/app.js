@@ -3,6 +3,7 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     skipWeekends: true,
+    records: [],
     grid: null,
     margin: 10,
     defaults: { margin: 5 },
@@ -44,7 +45,7 @@ Ext.define('CustomApp', {
             disabled: true,
             scope: this,
             handler: function() {
-                var csv = this._getCSVFromGrid();
+                var csv = this._getCSVFromDataAndGrid();
                 this._saveCSVToFile(csv,'cycle_time.csv',{type:'text/csv;charset=utf-8'});
             }
         });
@@ -78,18 +79,21 @@ Ext.define('CustomApp', {
             Ext.Object.merge(items,result);
         });
         this.logger.log("Results:", items);
-        var records = this._calculateCycleTime(items);
+        this.records = this._calculateCycleTime(items);
         
-        this.logger.log("Ready for store:", records);
+        this.logger.log("Ready for store:", this.records);
         
         var store = Ext.create('Rally.data.custom.Store',{
-            data: records
+            data: this.records
         });
         
         this.down('#display_box').removeAll();
         this.grid = this.down('#display_box').add({
             xtype:'rallygrid',
             store: store,
+            pagingToolbarCfg: {
+                store: store
+            },
             showRowActionsColumn: false,
             columnCfgs: [
                 {
@@ -118,9 +122,8 @@ Ext.define('CustomApp', {
             ]
         });
         
-        if ( records.length > 0 ) {
+        if ( this.records.length > 0 ) {
             this.down('#save_button').setDisabled(false);
-            this.records = records;
         }
         this.setLoading(false);
     },
@@ -283,24 +286,23 @@ Ext.define('CustomApp', {
 
         return deferred.promise;        
     },
-    _getCSVFromGrid: function() {
+    _getCSVFromDataAndGrid: function() {
         var csv = [];
-        if ( this.grid ) {
-            var records = this.grid.getStore().getData().items;
+        if ( this.records && this.grid ) {
             var columns = this.grid.getColumnCfgs();
             
-            this.logger.log("records in grid", records);
             this.logger.log("columns", columns);
             var header = this._getHeaderFromColumns(columns);
             csv.push(header);
             
-            Ext.Array.each(records,function(record){
+            Ext.Array.each(this.records,function(record){
                 var line_array = [];
                 Ext.Array.each(columns,function(column){
                     line_array.push('"' + record.get(column.dataIndex) + '"');
                 });
                 csv.push(line_array.join(','));
             });
+                
         }
         
         return csv.join('\r\n');
@@ -313,7 +315,6 @@ Ext.define('CustomApp', {
         return header.join(',');
     },
     _saveCSVToFile:function(csv,file_name,type_object){
-        this.logger.log("saving csv: ", csv);
         var blob = new Blob([csv],type_object);
         saveAs(blob,file_name);
     }
