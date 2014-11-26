@@ -188,6 +188,7 @@ Ext.define('CustomApp', {
             model: model,
             fetch: ['RevisionHistory',state_field_name,'Revisions','FormattedID','Name','ObjectID'],
             filters: filters,
+            limit: 600,
             autoLoad: true,
             listeners: {
                 scope: this,
