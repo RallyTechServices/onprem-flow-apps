@@ -221,7 +221,7 @@ Ext.define('CustomApp', {
     },
     _getHistoryForRecord: function(record,state_field,start_date, end_date) {
         var deferred = Ext.create('Deft.Deferred');
-        //this.logger.log('getting history for ', record);
+        this.logger.log('getting history for ', record.get('FormattedID'));
         
         var date_filters = Ext.create('Rally.data.wsapi.Filter',{
             property:'CreationDate',
