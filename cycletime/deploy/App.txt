@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Wed Nov 26 2014 15:39:15 GMT-0800 (PST) -->
+    <!--  Build Date: Sun Nov 30 2014 15:45:57 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Wed Nov 26 2014 15:39:15 GMT-0800 (PST)";
-        var CHECKSUM = 53406951233;
+        var APP_BUILD_DATE = "Sun Nov 30 2014 15:45:57 GMT-0800 (PST)";
+        var CHECKSUM = 70392831050;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -573,6 +573,104 @@ Ext.define('Rally.technicalservices.util.Parser', {
         }
         
         return matching_revisions;
+    },
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return an array of objects
+     * representing the entry into states for that array.
+     */
+    getStateAttainments: function(revision_array, field_name) {
+        var transitions = [];
+        
+        var first_date = null;
+        var first_value = null;
+        
+        Ext.Array.each( revision_array, function(revision, index){
+            var description = revision.get('Description');
+            // find original revision if passed
+
+            var values = this.findValuesForField(field_name, description);
+            if ( values.new_value !== null ) {
+                transitions.push({ 
+                    change_date: revision.get('CreationDate'),
+                    state: values.new_value 
+                });
+                // push original value back to start if we don't have one
+                // and if this isn't the first one (starting right into the state)
+                if ( values.original_value !== null && first_value === null ) {
+                    first_value = values.original_value;
+                }
+            } else if ( index == 0 ) { 
+                first_date = revision.get('CreationDate');
+            }
+            
+        },this);
+        
+        if ( first_date && first_value ) {
+            transitions.unshift({
+                change_date: first_date,
+                state: first_value 
+            });
+        }
+        
+        return transitions;
+    },
+    /*
+     * Provide a hash with a key for each day between first and end; value of
+     * each is a hash with keys for each state value that has items -- the value
+     * of each of these is an array of the items that are in that state (so we let
+     * some other function determine value however it wants)
+     * 
+     * Input an array of items that have a field called _changes (from getStateAttainments)
+     */
+    getCumulativeFlow: function(item_array, first_date, end_date){
+        var flow = {};
+        
+        var check_date = first_date;
+        
+        var preceding_day_values_by_item_id = {};
+        
+        while (check_date <= end_date ) {
+            flow[check_date] = {};
+            
+            Ext.Array.each(item_array,function(item){
+                var preceding_date = Rally.util.DateTime.add(check_date,'day',-1);
+                var state = this._getStateBetween(preceding_date,check_date,item);
+                if ( state ) {
+                    preceding_day_values_by_item_id[item.get('ObjectID')] = state;
+                } else if ( preceding_day_values_by_item_id[item.get('ObjectID')]) {
+                    var state = preceding_day_values_by_item_id[item.get('ObjectID')];
+                }
+                                
+                if ( state ) {
+                    if ( ! flow[check_date][state] ) {
+                        flow[check_date][state] = [];
+                    }
+                    
+                    flow[check_date][state].push(item);
+                }
+            },this);
+            
+            check_date = Rally.util.DateTime.add(check_date,'day',1);
+        }
+        
+        return flow;
+    },
+    /*
+     * expect an item to have a _changes field (from getStateAttainments)
+     * 
+     */
+    _getStateBetween: function (preceding_date,check_date,item){
+        var state = null;
+        var changes = item.get('_changes');
+        
+        Ext.Array.each(changes, function(change){
+            var change_date = change.change_date;
+            if ( change_date > preceding_date && change_date <= check_date ) {
+                state = change.state;
+            }
+        });
+        return state;
     },
     _getMatches: function(string, regex, index) {
         var matches = [];
@@ -1164,12 +1262,14 @@ Ext.define('CustomApp', {
     defaults: { margin: 5 },
     items: [
         {xtype:'container',itemId:'selector_box', defaults: { margin: 5 }},
-        {xtype:'container',itemId:'display_box', defaults: { margin: 5 }},
+        {xtype:'container',itemId:'display_box', layout: { type: 'hbox' }, items:[
+            {xtype:'container',itemId:'grid_box', defaults: { margin: 5 }, flex: 1},
+            {xtype:'container',itemId:'chart_box', minHeight: 600, defaults: { margin: 5 }, flex: 1}
+        ] },
         {xtype:'tsinfolink'}
     ],
     launch: function() {
         this._addButtons(this.down('#selector_box'));
-      
     },
     _addButtons: function(container){
         container.add({
@@ -1222,7 +1322,7 @@ Ext.define('CustomApp', {
            scope: this,
            success: this._makeGrid,
            failure: function(message){
-               this.down('#display_box').add({xtype:'container',html:'Problem: '+message});
+               this.down('#grid_box').add({xtype:'container',html:'Problem: '+message});
            }
        });
     },
@@ -1235,15 +1335,15 @@ Ext.define('CustomApp', {
         });
         this.logger.log("Results:", items);
         this.records = this._calculateCycleTime(items);
-        
+                
         this.logger.log("Ready for store:", this.records);
         
         var store = Ext.create('Rally.data.custom.Store',{
             data: this.records
         });
         
-        this.down('#display_box').removeAll();
-        this.grid = this.down('#display_box').add({
+        this.down('#grid_box').removeAll();
+        this.grid = this.down('#grid_box').add({
             xtype:'rallygrid',
             store: store,
             pagingToolbarCfg: {
@@ -1261,12 +1361,12 @@ Ext.define('CustomApp', {
                     flex: 1
                 },
                 {
-                    text: 'Entry',
+                    text: this.settings.start_state.get('name'),
                     dataIndex:'__start_date',
                     flex: 1
                 },
                 {
-                    text: 'Exit',
+                    text: this.settings.end_state.get('name'),
                     dataIndex:'__end_date',
                     flex: 1
                 },
@@ -1280,6 +1380,9 @@ Ext.define('CustomApp', {
         if ( this.records.length > 0 ) {
             this.down('#save_button').setDisabled(false);
         }
+        
+        this._makeCFDFromRecords(this.records);
+
         this.setLoading(false);
     },
     /* expecting a hash that looks like
@@ -1302,6 +1405,7 @@ Ext.define('CustomApp', {
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
+            record.set('_revisions',revisions);
             this.logger.log(record.get('FormattedID'));
             var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
             this.logger.log("Found pair of revisions:",found_revisions);
@@ -1376,7 +1480,7 @@ Ext.define('CustomApp', {
     },
     _getHistoryForRecord: function(record,state_field,start_date, end_date) {
         var deferred = Ext.create('Deft.Deferred');
-        //this.logger.log('getting history for ', record);
+        this.logger.log('getting history for ', record.get('FormattedID'));
         
         var date_filters = Ext.create('Rally.data.wsapi.Filter',{
             property:'CreationDate',
@@ -1441,6 +1545,98 @@ Ext.define('CustomApp', {
         });
 
         return deferred.promise;        
+    },
+    _getAllowedValuesFrom: function(field_definition){
+        this.logger.log("_getAllowedValuesFrom",field_definition);
+        
+        var allowed_values = [];
+        var allowed_values_set = this.settings.state_field.get('fieldDefinition')._allowedValueStore.data.items;
+        
+        this.logger.log("Allowed:", allowed_values_set);
+        if ( allowed_values_set._ref ) {
+            // this is a collection
+            this.logger.log("This is a collection");
+        } else {
+            this.logger.log("This is an array of values")
+            Ext.Array.each(allowed_values_set,function(allowed_value){
+                allowed_values.push(allowed_value.get('StringValue') || "None");
+            });
+        }
+        return allowed_values;
+    },
+    _makeCFDFromRecords: function(records){
+        this.setLoading("Calculating CFD");
+        this.down('#chart_box').removeAll();
+        this.logger.log("Getting CFD information", records);
+        Ext.Array.each(records,function(record){
+            var changes = Rally.technicalservices.util.Parser.getStateAttainments(record.get('_revisions'), this.settings.state_field.get('name'));
+            record.set('_changes',changes);
+        },this);
+        
+        var start_date = this.settings.start_date;
+        var end_date = this.settings.end_date;
+        
+        var cumulative_flow = Rally.technicalservices.util.Parser.getCumulativeFlow(records, start_date, end_date);
+        
+        this.logger.log("Got cumulative flow:",cumulative_flow, this.settings.state_field);
+        
+        var series_names = this._getAllowedValuesFrom(this.settings.state_field);
+//        Ext.Array.each(allowed_values,function(allowed_value){
+//            series_names.push(allowed_value.StringValue);
+//        });
+        this.logger.log("Allowed Values:", series_names);
+        
+        var categories = [];
+        
+        Ext.Object.each(cumulative_flow,function(key,value){
+            categories.push(Ext.util.Format.date(key,'d/m'));
+        });
+        
+        this.logger.log(categories);
+        
+        var serieses = [];
+        Ext.Array.each( series_names, function(series_name){
+            var series = {type:'area',name:series_name,stack:1,data:[]};
+            Ext.Array.each(Ext.Object.getKeys(cumulative_flow),function(category){
+                var value =  0;
+                if ( cumulative_flow[category][series_name] && cumulative_flow[category][series_name].length > 0 ) {
+                    value = cumulative_flow[category][series_name].length;
+                }
+                series.data.push(value);
+            });
+            serieses.push(series);
+        });
+        
+        this.logger.log(serieses);
+        this.down('#chart_box').add({
+            xtype:'rallychart',
+            chartData: {
+                series: serieses
+            },
+            chartConfig: {
+                chart: {},
+                title: {
+                    text: 'Cumulative Flow',
+                    align: 'center'
+                },
+                yAxis: [{ title: { text: 'Count' } }],
+                xAxis: [{
+                    tickmarkPlacement: 'on',
+                    tickInterval: 7,
+                    categories:  categories,
+                    labels: {
+                        align: 'left',
+                        rotation: 70
+                    }
+                }],
+                plotOptions: {
+                    series: {
+                        marker: { enabled: false },
+                        stacking: 'normal'
+                    }
+                }
+            }
+        });
     },
     _getCSVFromDataAndGrid: function() {
         var csv = [];

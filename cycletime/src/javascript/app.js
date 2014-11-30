@@ -9,12 +9,14 @@ Ext.define('CustomApp', {
     defaults: { margin: 5 },
     items: [
         {xtype:'container',itemId:'selector_box', defaults: { margin: 5 }},
-        {xtype:'container',itemId:'display_box', defaults: { margin: 5 }},
+        {xtype:'container',itemId:'display_box', layout: { type: 'hbox' }, items:[
+            {xtype:'container',itemId:'grid_box', defaults: { margin: 5 }, flex: 1},
+            {xtype:'container',itemId:'chart_box', minHeight: 600, defaults: { margin: 5 }, flex: 1}
+        ] },
         {xtype:'tsinfolink'}
     ],
     launch: function() {
         this._addButtons(this.down('#selector_box'));
-      
     },
     _addButtons: function(container){
         container.add({
@@ -67,7 +69,7 @@ Ext.define('CustomApp', {
            scope: this,
            success: this._makeGrid,
            failure: function(message){
-               this.down('#display_box').add({xtype:'container',html:'Problem: '+message});
+               this.down('#grid_box').add({xtype:'container',html:'Problem: '+message});
            }
        });
     },
@@ -80,15 +82,15 @@ Ext.define('CustomApp', {
         });
         this.logger.log("Results:", items);
         this.records = this._calculateCycleTime(items);
-        
+                
         this.logger.log("Ready for store:", this.records);
         
         var store = Ext.create('Rally.data.custom.Store',{
             data: this.records
         });
         
-        this.down('#display_box').removeAll();
-        this.grid = this.down('#display_box').add({
+        this.down('#grid_box').removeAll();
+        this.grid = this.down('#grid_box').add({
             xtype:'rallygrid',
             store: store,
             pagingToolbarCfg: {
@@ -106,12 +108,12 @@ Ext.define('CustomApp', {
                     flex: 1
                 },
                 {
-                    text: 'Entry',
+                    text: this.settings.start_state.get('name'),
                     dataIndex:'__start_date',
                     flex: 1
                 },
                 {
-                    text: 'Exit',
+                    text: this.settings.end_state.get('name'),
                     dataIndex:'__end_date',
                     flex: 1
                 },
@@ -125,6 +127,9 @@ Ext.define('CustomApp', {
         if ( this.records.length > 0 ) {
             this.down('#save_button').setDisabled(false);
         }
+        
+        this._makeCFDFromRecords(this.records);
+
         this.setLoading(false);
     },
     /* expecting a hash that looks like
@@ -147,6 +152,7 @@ Ext.define('CustomApp', {
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
+            record.set('_revisions',revisions);
             this.logger.log(record.get('FormattedID'));
             var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
             this.logger.log("Found pair of revisions:",found_revisions);
@@ -286,6 +292,98 @@ Ext.define('CustomApp', {
         });
 
         return deferred.promise;        
+    },
+    _getAllowedValuesFrom: function(field_definition){
+        this.logger.log("_getAllowedValuesFrom",field_definition);
+        
+        var allowed_values = [];
+        var allowed_values_set = this.settings.state_field.get('fieldDefinition')._allowedValueStore.data.items;
+        
+        this.logger.log("Allowed:", allowed_values_set);
+        if ( allowed_values_set._ref ) {
+            // this is a collection
+            this.logger.log("This is a collection");
+        } else {
+            this.logger.log("This is an array of values")
+            Ext.Array.each(allowed_values_set,function(allowed_value){
+                allowed_values.push(allowed_value.get('StringValue') || "None");
+            });
+        }
+        return allowed_values;
+    },
+    _makeCFDFromRecords: function(records){
+        this.setLoading("Calculating CFD");
+        this.down('#chart_box').removeAll();
+        this.logger.log("Getting CFD information", records);
+        Ext.Array.each(records,function(record){
+            var changes = Rally.technicalservices.util.Parser.getStateAttainments(record.get('_revisions'), this.settings.state_field.get('name'));
+            record.set('_changes',changes);
+        },this);
+        
+        var start_date = this.settings.start_date;
+        var end_date = this.settings.end_date;
+        
+        var cumulative_flow = Rally.technicalservices.util.Parser.getCumulativeFlow(records, start_date, end_date);
+        
+        this.logger.log("Got cumulative flow:",cumulative_flow, this.settings.state_field);
+        
+        var series_names = this._getAllowedValuesFrom(this.settings.state_field);
+//        Ext.Array.each(allowed_values,function(allowed_value){
+//            series_names.push(allowed_value.StringValue);
+//        });
+        this.logger.log("Allowed Values:", series_names);
+        
+        var categories = [];
+        
+        Ext.Object.each(cumulative_flow,function(key,value){
+            categories.push(Ext.util.Format.date(key,'d/m'));
+        });
+        
+        this.logger.log(categories);
+        
+        var serieses = [];
+        Ext.Array.each( series_names, function(series_name){
+            var series = {type:'area',name:series_name,stack:1,data:[]};
+            Ext.Array.each(Ext.Object.getKeys(cumulative_flow),function(category){
+                var value =  0;
+                if ( cumulative_flow[category][series_name] && cumulative_flow[category][series_name].length > 0 ) {
+                    value = cumulative_flow[category][series_name].length;
+                }
+                series.data.push(value);
+            });
+            serieses.push(series);
+        });
+        
+        this.logger.log(serieses);
+        this.down('#chart_box').add({
+            xtype:'rallychart',
+            chartData: {
+                series: serieses
+            },
+            chartConfig: {
+                chart: {},
+                title: {
+                    text: 'Cumulative Flow',
+                    align: 'center'
+                },
+                yAxis: [{ title: { text: 'Count' } }],
+                xAxis: [{
+                    tickmarkPlacement: 'on',
+                    tickInterval: 7,
+                    categories:  categories,
+                    labels: {
+                        align: 'left',
+                        rotation: 70
+                    }
+                }],
+                plotOptions: {
+                    series: {
+                        marker: { enabled: false },
+                        stacking: 'normal'
+                    }
+                }
+            }
+        });
     },
     _getCSVFromDataAndGrid: function() {
         var csv = [];
