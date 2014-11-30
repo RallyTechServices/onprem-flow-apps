@@ -79,6 +79,104 @@ Ext.define('Rally.technicalservices.util.Parser', {
         
         return matching_revisions;
     },
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return an array of objects
+     * representing the entry into states for that array.
+     */
+    getStateAttainments: function(revision_array, field_name) {
+        var transitions = [];
+        
+        var first_date = null;
+        var first_value = null;
+        
+        Ext.Array.each( revision_array, function(revision, index){
+            var description = revision.get('Description');
+            // find original revision if passed
+
+            var values = this.findValuesForField(field_name, description);
+            if ( values.new_value !== null ) {
+                transitions.push({ 
+                    change_date: revision.get('CreationDate'),
+                    state: values.new_value 
+                });
+                // push original value back to start if we don't have one
+                // and if this isn't the first one (starting right into the state)
+                if ( values.original_value !== null && first_value === null ) {
+                    first_value = values.original_value;
+                }
+            } else if ( index == 0 ) { 
+                first_date = revision.get('CreationDate');
+            }
+            
+        },this);
+        
+        if ( first_date && first_value ) {
+            transitions.unshift({
+                change_date: first_date,
+                state: first_value 
+            });
+        }
+        
+        return transitions;
+    },
+    /*
+     * Provide a hash with a key for each day between first and end; value of
+     * each is a hash with keys for each state value that has items -- the value
+     * of each of these is an array of the items that are in that state (so we let
+     * some other function determine value however it wants)
+     * 
+     * Input an array of items that have a field called _changes (from getStateAttainments)
+     */
+    getCumulativeFlow: function(item_array, first_date, end_date){
+        var flow = {};
+        
+        var check_date = first_date;
+        
+        var preceding_day_values_by_item_id = {};
+        
+        while (check_date <= end_date ) {
+            flow[check_date] = {};
+            
+            Ext.Array.each(item_array,function(item){
+                var preceding_date = Rally.util.DateTime.add(check_date,'day',-1);
+                var state = this._getStateBetween(preceding_date,check_date,item);
+                if ( state ) {
+                    preceding_day_values_by_item_id[item.get('ObjectID')] = state;
+                } else if ( preceding_day_values_by_item_id[item.get('ObjectID')]) {
+                    var state = preceding_day_values_by_item_id[item.get('ObjectID')];
+                }
+                                
+                if ( state ) {
+                    if ( ! flow[check_date][state] ) {
+                        flow[check_date][state] = [];
+                    }
+                    
+                    flow[check_date][state].push(item);
+                }
+            },this);
+            
+            check_date = Rally.util.DateTime.add(check_date,'day',1);
+        }
+        
+        return flow;
+    },
+    /*
+     * expect an item to have a _changes field (from getStateAttainments)
+     * 
+     */
+    _getStateBetween: function (preceding_date,check_date,item){
+        var state = null;
+        var changes = item.get('_changes');
+        
+        Ext.Array.each(changes, function(change){
+            var change_date = change.change_date;
+            if ( change_date > preceding_date && change_date <= check_date ) {
+                state = change.state;
+            }
+        });
+        return state;
+    },
     _getMatches: function(string, regex, index) {
         var matches = [];
         var all_matches = regex.exec(string);

@@ -1,19 +1,7 @@
 describe("Given arrays of revisions",function() {
-   var first_saturday_begin = new Date(2013,08,07,0,0,0);
-    
-    var first_sunday_end = new Date(2013,08,08,23,59,0);
 
-    var first_monday_begin = new Date(2013,08,09,0,0,0);
-    var first_monday_end = new Date(2013,08,09,23,59,0);
-    var first_tuesday_begin = new Date(2013,08,10,0,0,0);
-    var first_tuesday_end = new Date(2013,08,10,23,59,0);
-    var second_monday_begin = new Date(2013,08,16,0,0,0);
-    var third_monday_begin = new Date(2013,08,23,0,0,0);
     
-    var three_month_start_monday = new Date(2013,10,25,0,0,0);
-    var three_month_end_monday = new Date(2014,0,27,0,0,0);
-    
-    describe("When searching start values for a field",function(){  
+    describe("When searching start and end values for a field",function(){  
         it('should find the revisions that entered two states', function() {
             var rev1 = Ext.create('mockRevision',{ ObjectID: 1, Description: "RANK moved up, SCHEDULE STATE changed from [Defined] to [In-Progress]" });
             var rev2 = Ext.create('mockRevision',{ ObjectID: 2, Description: "RANK moved down, SCHEDULE STATE changed from [In-Progress] to [Completed]" });
