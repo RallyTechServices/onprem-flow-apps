@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites>
+
+  <testsuite name="Using the rally utilities When getting an array of days" errors="0" tests="5" failures="0" time="0.004" timestamp="2014-11-30T19:14:10.084Z">
+    
+      <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of days without weekends" time="0.001">
+        
+      </testcase>
+    
+      <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of days with weekends" time="0.001">
+        
+      </testcase>
+    
+      <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of days even if dates are in wrong order" time="0.001">
+        
+      </testcase>
+    
+      <testcase assertions="4" classname="Using the rally utilities When getting an array of days" name="should return an array of days spaced a week apart when there are more than 45 days" time="0">
+        
+      </testcase>
+    
+      <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of 30 minute increments when less than or equal to 2 days" time="0.001">
+        
+      </testcase>
+    
+  </testsuite>
+
+</testsuites>
