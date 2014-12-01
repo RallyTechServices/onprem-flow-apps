@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
-  <testsuite name="Using the rally utilities When getting an array of days" errors="0" tests="5" failures="0" time="0.004" timestamp="2014-11-30T19:14:10.084Z">
+  <testsuite name="Using the rally utilities When getting an array of days" errors="0" tests="5" failures="0" time="0.005" timestamp="2014-12-01T03:25:50.280Z">
     
       <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of days without weekends" time="0.001">
         
@@ -19,7 +19,7 @@
         
       </testcase>
     
-      <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of 30 minute increments when less than or equal to 2 days" time="0.001">
+      <testcase assertions="3" classname="Using the rally utilities When getting an array of days" name="should return an array of 30 minute increments when less than or equal to 2 days" time="0">
         
       </testcase>
     

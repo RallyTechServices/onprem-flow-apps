@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Jasmine Spec Runner</title>
+
+    <script type="text/javascript">
+        // some global variables
+        var app_context = null;
+    </script>
+    
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0rc2/sdk-debug.js"></script>
+    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0rc2/lib/analytics/analytics-all.js"></script>
+        
+    
+    
+    <script src=".grunt/grunt-contrib-jasmine/jasmine.js"></script>
+    
+    <script src=".grunt/grunt-contrib-jasmine/jasmine-html.js"></script>
+    
+    <script src=".grunt/grunt-contrib-jasmine/reporter.js"></script>
+    
+    
+    
+    
+    
+    <script src="test/fast/fastHelper.js"></script>
+    
+    <script src="test/fast/ts-history-find-changes-spec.js"></script>
+    
+    <script src="test/fast/ts-history-find-start-end-states-spec.js"></script>
+    
+    <script src="test/fast/ts-parse-revision-description-spec.js"></script>
+    
+    <script src="test/fast/ts-utilities-spec.js"></script>
+    
+    
+    
+    
+    <script type="text/javascript">
+        //Redefine onReady - bug in phantomjs such that onload isn't triggered for <link>, so the default Rally onReady won't work consistently
+        Rally.sdk.Bootstrapper.onReady = function (onready) {
+            if (!Rally.environment) {
+                Ext.create('Rally.sdk.env.Global').setup();
+            }
+            onready();
+        };
+                
+        Rally.onReady(function () {
+            Rally.loadScripts(["src/javascript/_ts-utilities-parser.js","src/javascript/_ts-utilities.js"],
+            function() {
+                
+                var jasmineEnv = jasmine.getEnv();
+
+                jasmineEnv.updateInterval = 1000;
+                var htmlReporter = new jasmine.HtmlReporter();
+                jasmineEnv.addReporter(htmlReporter);
+
+                jasmineEnv.specFilter = function (spec) {
+                    return htmlReporter.specFilter(spec);
+                };
+
+                jasmineEnv.execute();
+            }, true);
+        });
+        
+    </script>
+    <link rel="stylesheet" type="text/css" href="src/style/app.css">
+    
+    <link rel="stylesheet" type="text/css" href=".grunt/grunt-contrib-jasmine/jasmine.css">
+</head>
+<body></body>
+</html>

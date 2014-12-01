@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
-  <testsuite name="Given description strings When searching change values for a field" errors="0" tests="6" failures="0" time="0.003" timestamp="2014-11-30T19:14:10.071Z">
+  <testsuite name="Given description strings When searching change values for a field" errors="0" tests="6" failures="0" time="0.003" timestamp="2014-12-01T03:25:50.265Z">
     
       <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find the old and new values for a given field" time="0">
         
@@ -11,19 +11,19 @@
         
       </testcase>
     
-      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find the old and new values for a given field for schedule state" time="0.001">
+      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find the old and new values for a given field for schedule state" time="0">
         
       </testcase>
     
-      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should not find values if they are not there" time="0">
+      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should not find values if they are not there" time="0.001">
         
       </testcase>
     
-      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find make the old value an empty string when it has something new added" time="0.001">
+      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find make the old value an empty string when it has something new added" time="0">
         
       </testcase>
     
-      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find make the new value an empty string when it has something removed" time="0">
+      <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find make the new value an empty string when it has something removed" time="0.001">
         
       </testcase>
     
