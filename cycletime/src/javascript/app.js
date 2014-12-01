@@ -339,51 +339,55 @@ Ext.define('CustomApp', {
             categories.push(Ext.util.Format.date(key,'d/m'));
         });
         
-        this.logger.log(categories);
-        
-        var serieses = [];
-        Ext.Array.each( series_names, function(series_name){
-            var series = {type:'area',name:series_name,stack:1,data:[]};
-            Ext.Array.each(Ext.Object.getKeys(cumulative_flow),function(category){
-                var value =  0;
-                if ( cumulative_flow[category][series_name] && cumulative_flow[category][series_name].length > 0 ) {
-                    value = cumulative_flow[category][series_name].length;
-                }
-                series.data.push(value);
+        if ( records.length == 0 ) {
+            this.down('#chart_box').add({xtype:'container',html:'No data found'});
+        } else {
+            this.logger.log(categories);
+            
+            var serieses = [];
+            Ext.Array.each( series_names, function(series_name){
+                var series = {type:'area',name:series_name,stack:1,data:[]};
+                Ext.Array.each(Ext.Object.getKeys(cumulative_flow),function(category){
+                    var value =  0;
+                    if ( cumulative_flow[category][series_name] && cumulative_flow[category][series_name].length > 0 ) {
+                        value = cumulative_flow[category][series_name].length;
+                    }
+                    series.data.push(value);
+                });
+                serieses.push(series);
             });
-            serieses.push(series);
-        });
-        
-        this.logger.log(serieses);
-        this.down('#chart_box').add({
-            xtype:'rallychart',
-            chartData: {
-                series: serieses
-            },
-            chartConfig: {
-                chart: {},
-                title: {
-                    text: 'Cumulative Flow',
-                    align: 'center'
+            
+            this.logger.log(serieses);
+            this.down('#chart_box').add({
+                xtype:'rallychart',
+                chartData: {
+                    series: serieses
                 },
-                yAxis: [{ title: { text: 'Count' } }],
-                xAxis: [{
-                    tickmarkPlacement: 'on',
-                    tickInterval: 7,
-                    categories:  categories,
-                    labels: {
-                        align: 'left',
-                        rotation: 70
-                    }
-                }],
-                plotOptions: {
-                    series: {
-                        marker: { enabled: false },
-                        stacking: 'normal'
+                chartConfig: {
+                    chart: {},
+                    title: {
+                        text: 'Cumulative Flow',
+                        align: 'center'
+                    },
+                    yAxis: [{ title: { text: 'Count' } }],
+                    xAxis: [{
+                        tickmarkPlacement: 'on',
+                        tickInterval: 7,
+                        categories:  categories,
+                        labels: {
+                            align: 'left',
+                            rotation: 70
+                        }
+                    }],
+                    plotOptions: {
+                        series: {
+                            marker: { enabled: false },
+                            stacking: 'normal'
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     },
     _getCSVFromDataAndGrid: function() {
         var csv = [];
