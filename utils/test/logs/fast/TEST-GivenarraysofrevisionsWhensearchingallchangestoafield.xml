@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
-  <testsuite name="Given arrays of revisions When searching all changes to a field" errors="0" tests="2" failures="0" time="0.02" timestamp="2014-12-01T03:25:50.255Z">
+  <testsuite name="Given arrays of revisions When searching all changes to a field" errors="0" tests="2" failures="0" time="0.022" timestamp="2014-12-01T23:44:02.360Z">
     
-      <testcase assertions="4" classname="Given arrays of revisions When searching all changes to a field" name="should find the state changes in an array" time="0.006">
+      <testcase assertions="4" classname="Given arrays of revisions When searching all changes to a field" name="should find the state changes in an array" time="0.005">
         
       </testcase>
     

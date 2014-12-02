@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
-  <testsuite name="Given arrays of revisions When searching all changes to a field When given a set of state changes," errors="0" tests="3" failures="0" time="0.01" timestamp="2014-12-01T03:25:50.254Z">
+  <testsuite name="Given arrays of revisions When searching all changes to a field When given a set of state changes," errors="0" tests="3" failures="0" time="0.013" timestamp="2014-12-01T23:44:02.359Z">
     
-      <testcase assertions="7" classname="Given arrays of revisions When searching all changes to a field When given a set of state changes," name="should get an item in each state every day" time="0.005">
+      <testcase assertions="7" classname="Given arrays of revisions When searching all changes to a field When given a set of state changes," name="should get an item in each state every day" time="0.008">
         
       </testcase>
     
-      <testcase assertions="3" classname="Given arrays of revisions When searching all changes to a field When given a set of state changes," name="should get an item in each state every day when there are multiple changes on one day" time="0">
+      <testcase assertions="3" classname="Given arrays of revisions When searching all changes to a field When given a set of state changes," name="should get an item in each state every day when there are multiple changes on one day" time="0.001">
         
       </testcase>
     
-      <testcase assertions="7" classname="Given arrays of revisions When searching all changes to a field When given a set of state changes," name="should get the items in each state every day when multiple items are provided" time="0.001">
+      <testcase assertions="7" classname="Given arrays of revisions When searching all changes to a field When given a set of state changes," name="should get the items in each state every day when multiple items are provided" time="0">
         
       </testcase>
     
