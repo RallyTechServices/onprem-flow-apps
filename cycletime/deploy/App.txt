@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 01 2014 11:35:38 GMT-0700 (MST) -->
+    <!--  Build Date: Mon Dec 01 2014 16:49:32 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 01 2014 11:35:38 GMT-0700 (MST)";
-        var CHECKSUM = 70882130329;
+        var APP_BUILD_DATE = "Mon Dec 01 2014 16:49:32 GMT-0700 (MST)";
+        var CHECKSUM = 71828904903;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -1133,7 +1133,7 @@ Ext.define('CustomApp', {
                         });
                         
                     } else {
-                        deferred.reject('Failed to load store for model [' + model_name + '] and fields [' + model_fields.join(',') + ']');
+                        deferred.reject('Failed to load store for model [' + model + ']');
                     }
                 }
             }
@@ -1375,12 +1375,25 @@ Ext.define('Rally.technicalservices.util.Parser', {
                 original_value = "";
             }
         }
+        
+        if ( original_value === null && new_value === null && Ext.util.Format.uppercase(field_name) == 'PROJECTS') {
+            // Handle a revision entry on demo-west (Jan-2009): "Added project Project 3"
+            regex = new RegExp( "^Added project (.*)$" );
+            matches = this._getMatches(text_string, regex);
+
+            if ( matches.length > 0 ) {
+                new_value = matches[0];
+                original_value = "";
+            }
+        }
+        
         return {
             description: text_string,
             new_value: new_value,
             original_value: original_value
         };
     },
+    
     /**
      * given an array of revision objects, find the first revision that changed to the first state and the last
      * revision that changed to the last state
@@ -1418,6 +1431,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
         
         return matching_revisions;
     },
+    
     /*
      * Given an array of revisions and a field name that holds the state,
      * find all the state transitions and return an array of objects
