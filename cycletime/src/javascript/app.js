@@ -401,7 +401,11 @@ Ext.define('CustomApp', {
             Ext.Array.each(this.records,function(record){
                 var line_array = [];
                 Ext.Array.each(columns,function(column){
-                    line_array.push('"' + record.get(column.dataIndex) + '"');
+                    var data = record.get(column.dataIndex);
+                    if ( typeof(data) == 'object' ) {
+                        data = Ext.util.Format.date(data,'d/m/Y');
+                    }
+                    line_array.push('"' + data + '"');
                 });
                 csv.push(line_array.join(','));
             });
