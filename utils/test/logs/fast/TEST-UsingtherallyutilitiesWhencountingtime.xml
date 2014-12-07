@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
-  <testsuite name="Using the rally utilities When counting time" errors="0" tests="13" failures="0" time="0.009" timestamp="2014-12-01T03:25:50.274Z">
+  <testsuite name="Using the rally utilities When counting time" errors="0" tests="13" failures="0" time="0.007" timestamp="2014-12-07T02:24:24.903Z">
     
       <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days as 0 if the same time" time="0.001">
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days as 0 when different times, same day" time="0.001">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days as 0 when different times, same day" time="0">
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days as 1 on the different days" time="0">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days as 1 on the different days" time="0.001">
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days between two dates" time="0">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should count the number of days between two dates" time="0.001">
         
       </testcase>
     
@@ -23,7 +23,7 @@
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should not care if the days are supplied out of order" time="0">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should not care if the days are supplied out of order" time="0.001">
         
       </testcase>
     
@@ -39,19 +39,19 @@
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should return 0 when on a Saturday and not counting weekends in date difference" time="0.001">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should return 0 when on a Saturday and not counting weekends in date difference" time="0">
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should shift beginning Saturday to Monday if not counting weekends in difference" time="0.001">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should shift beginning Saturday to Monday if not counting weekends in difference" time="0">
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should shift beginning Sunday to Monday if not counting weekends in difference" time="0.001">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should shift beginning Sunday to Monday if not counting weekends in difference" time="0">
         
       </testcase>
     
-      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should shift ending Sunday to Monday if not counting weekends in difference" time="0.001">
+      <testcase assertions="1" classname="Using the rally utilities When counting time" name="should shift ending Sunday to Monday if not counting weekends in difference" time="0">
         
       </testcase>
     

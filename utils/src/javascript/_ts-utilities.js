@@ -94,7 +94,6 @@ Ext.define('Rally.technicalservices.util.Utilities', {
             shifted_date = new Date(check_date.setHours(0));
             shifted_date = Rally.util.DateTime.add(shifted_date,"day",delta);
         }
-        console.log("Shifting from ", check_date, " to ", shifted_date, " (", delta, ")");
         return shifted_date;
     },
     /*

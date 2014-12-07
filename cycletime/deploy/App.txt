@@ -3,11 +3,11 @@
 <head>
     <title>OnPrem CycleTime</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Dec 01 2014 21:12:48 GMT-0800 (PST) -->
+    <!--  Build Date: Sat Dec 06 2014 18:26:52 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Dec 01 2014 21:12:48 GMT-0800 (PST)";
-        var CHECKSUM = 71164636315;
+        var APP_BUILD_DATE = "Sat Dec 06 2014 18:26:52 GMT-0800 (PST)";
+        var CHECKSUM = 73390408407;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc2/sdk.js"></script>
@@ -977,16 +977,17 @@ Ext.define('CustomApp', {
      * }
      */
     _processWithSettings: function(settings){
-       this.settings = settings;
-       this.setLoading("Gathering data...");
-       this.down('#save_button').setDisabled(true);
-       this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
+        this.settings = settings;
+        this.setLoading("Gathering data...");
+        this.down('#save_button').setDisabled(true);
+
+        this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
            scope: this,
            success: this._makeGrid,
            failure: function(message){
                this.down('#grid_box').add({xtype:'container',html:'Problem: '+message});
            }
-       });
+        });
     },
     _makeGrid: function(results){
         // expect to get back an array of hashes, where the key to each hash is a formatted id,
@@ -1064,12 +1065,16 @@ Ext.define('CustomApp', {
         var start_state = this.settings.start_state;
         var end_state = this.settings.end_state;
         
+        var allowed_values = this._getAllowedValuesFrom(this.settings.state_field);
+        
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
             record.set('_revisions',revisions);
             this.logger.log(record.get('FormattedID'));
-            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'), allowed_values);
+            
+            
             this.logger.log("Found pair of revisions:",found_revisions);
             
             if ( found_revisions.length == 2 ) {
@@ -1391,7 +1396,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * 
      * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
      */
-    findEntryExitRevisions: function(revision_array, field_name, start_state, end_state) {
+    findEntryExitRevisions: function(revision_array, field_name, start_state, end_state, state_array) {
         var matching_revisions = [];
         var start_revision = null;
         var end_revision = null;
@@ -1408,8 +1413,29 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         },this);
         
+        if ( ! start_revision || ! end_revision ) {
+            // maybe we skipped the start
+            if ( state_array ) {
+                start_index = Ext.Array.indexOf(state_array, start_state);
+                end_index = Ext.Array.indexOf(state_array, end_state);
+    
+                Ext.Array.each( revision_array, function(revision) {
+                    var values = this.findValuesForField(field_name, revision.get('Description'));
+                    var revision_index = Ext.Array.indexOf(state_array, values.new_value);
+                    
+                    if ( !start_revision &&  revision_index > start_index && revision_index < end_index ) {
+                        start_revision = revision;
+                    }
+                    if ( !end_revision &&  revision_index > end_index ) {
+                        end_revision = revision;
+                    }
+                },this);
+            }
+        }
+        
         if ( end_revision && ! start_revision) {
-            // we got to the end without seeing the start.  
+            // we got to the end without seeing the start.
+            
             // if the first rev is the original then let's assume it was our start
             if ( revision_array[0].get('Description') == "Original revision" ){
                 start_revision = revision_array[0];
@@ -1627,7 +1653,6 @@ Ext.define('Rally.technicalservices.util.Utilities', {
             shifted_date = new Date(check_date.setHours(0));
             shifted_date = Rally.util.DateTime.add(shifted_date,"day",delta);
         }
-        console.log("Shifting from ", check_date, " to ", shifted_date, " (", delta, ")");
         return shifted_date;
     },
     /*

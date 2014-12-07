@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
-  <testsuite name="Given arrays of revisions When searching start and end values for a field" errors="0" tests="7" failures="0" time="0.005" timestamp="2014-12-01T03:25:50.261Z">
+  <testsuite name="Given arrays of revisions When searching start and end values for a field" errors="0" tests="10" failures="0" time="0.007" timestamp="2014-12-07T02:24:24.892Z">
     
       <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should find the revisions that entered two states" time="0.001">
         
@@ -15,11 +15,11 @@
         
       </testcase>
     
-      <testcase assertions="1" classname="Given arrays of revisions When searching start and end values for a field" name="should return empty array if neither state is found" time="0">
+      <testcase assertions="1" classname="Given arrays of revisions When searching start and end values for a field" name="should return empty array if neither state is found" time="0.001">
         
       </testcase>
     
-      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should return very first start state and very last end state if it enters those states multiple times" time="0.001">
+      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should return very first start state and very last end state if it enters those states multiple times" time="0">
         
       </testcase>
     
@@ -27,7 +27,19 @@
         
       </testcase>
     
-      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should assume the creation state is the initial one if provided in the time frame" time="0.001">
+      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should assume the creation state is the initial one if provided in the time frame" time="0">
+        
+      </testcase>
+    
+      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should find the revisions that crossed two states if first state skipped and ordered array of valid states provided" time="0">
+        
+      </testcase>
+    
+      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should find the revisions that crossed two states if second state skipped and ordered array of valid states provided" time="0.001">
+        
+      </testcase>
+    
+      <testcase assertions="1" classname="Given arrays of revisions When searching start and end values for a field" name="should not find the revisions that crossed two states if first state skipped directly to second state and ordered array of valid states provided" time="0">
         
       </testcase>
     

@@ -48,7 +48,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * 
      * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
      */
-    findEntryExitRevisions: function(revision_array, field_name, start_state, end_state) {
+    findEntryExitRevisions: function(revision_array, field_name, start_state, end_state, state_array) {
         var matching_revisions = [];
         var start_revision = null;
         var end_revision = null;
@@ -65,8 +65,29 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         },this);
         
+        if ( ! start_revision || ! end_revision ) {
+            // maybe we skipped the start
+            if ( state_array ) {
+                start_index = Ext.Array.indexOf(state_array, start_state);
+                end_index = Ext.Array.indexOf(state_array, end_state);
+    
+                Ext.Array.each( revision_array, function(revision) {
+                    var values = this.findValuesForField(field_name, revision.get('Description'));
+                    var revision_index = Ext.Array.indexOf(state_array, values.new_value);
+                    
+                    if ( !start_revision &&  revision_index > start_index && revision_index < end_index ) {
+                        start_revision = revision;
+                    }
+                    if ( !end_revision &&  revision_index > end_index ) {
+                        end_revision = revision;
+                    }
+                },this);
+            }
+        }
+        
         if ( end_revision && ! start_revision) {
-            // we got to the end without seeing the start.  
+            // we got to the end without seeing the start.
+            
             // if the first rev is the original then let's assume it was our start
             if ( revision_array[0].get('Description') == "Original revision" ){
                 start_revision = revision_array[0];

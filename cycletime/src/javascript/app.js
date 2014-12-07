@@ -62,16 +62,17 @@ Ext.define('CustomApp', {
      * }
      */
     _processWithSettings: function(settings){
-       this.settings = settings;
-       this.setLoading("Gathering data...");
-       this.down('#save_button').setDisabled(true);
-       this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
+        this.settings = settings;
+        this.setLoading("Gathering data...");
+        this.down('#save_button').setDisabled(true);
+
+        this._getStories(settings.model, settings.state_field, settings.start_date, settings.end_date).then({
            scope: this,
            success: this._makeGrid,
            failure: function(message){
                this.down('#grid_box').add({xtype:'container',html:'Problem: '+message});
            }
-       });
+        });
     },
     _makeGrid: function(results){
         // expect to get back an array of hashes, where the key to each hash is a formatted id,
@@ -149,12 +150,16 @@ Ext.define('CustomApp', {
         var start_state = this.settings.start_state;
         var end_state = this.settings.end_state;
         
+        var allowed_values = this._getAllowedValuesFrom(this.settings.state_field);
+        
         Ext.Object.each(item_hashes, function(key,item_hash){
             var record = item_hash.record;
             var revisions = item_hash.revisions;
             record.set('_revisions',revisions);
             this.logger.log(record.get('FormattedID'));
-            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'));
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(revisions, field_name, start_state.get('name'), end_state.get('name'), allowed_values);
+            
+            
             this.logger.log("Found pair of revisions:",found_revisions);
             
             if ( found_revisions.length == 2 ) {

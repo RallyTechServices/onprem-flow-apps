@@ -97,7 +97,6 @@ describe("Using the rally utilities",function() {
         });
         
         it('should shift beginning Saturday to Monday if not counting weekends in difference',function() {
-            console.log('start');
             var date1 = first_saturday_begin;
             var date2 = first_tuesday_begin;
             
@@ -112,7 +111,6 @@ describe("Using the rally utilities",function() {
         });
         
         it('should shift ending Sunday to Monday if not counting weekends in difference',function() {
-            console.log('start');
             var date1 = first_tuesday_begin;
             var date2 = second_sunday_begin;
             

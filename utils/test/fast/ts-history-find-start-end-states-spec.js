@@ -77,5 +77,42 @@ describe("Given arrays of revisions",function() {
             expect( found_revisions[0].get('ObjectID') ).toEqual(1);
             expect( found_revisions[1].get('ObjectID') ).toEqual(2);
         });
+        
+        it('should find the revisions that crossed two states if first state skipped and ordered array of valid states provided', function() {
+            var rev1 = Ext.create('mockRevision',{ ObjectID: 1, Description: "SCHEDULE STATE changed from [Defined] to [Completed]" });
+            var rev2 = Ext.create('mockRevision',{ ObjectID: 2, Description: "RANK moved up" });
+            var rev3 = Ext.create('mockRevision',{ ObjectID: 3, Description: "SCHEDULE STATE changed from [Completed] to [Accepted]" });
+        
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(
+                [rev1,rev2,rev3], 'Schedule State', 'In-Progress', 'Accepted',['Defined','In-Progress','Completed','Accepted']);
+            expect( found_revisions.length ).toEqual(2);
+            expect( found_revisions[0].get('ObjectID') ).toEqual(1);
+            expect( found_revisions[1].get('ObjectID') ).toEqual(3);
+            
+        });
+        
+        it('should find the revisions that crossed two states if second state skipped and ordered array of valid states provided', function() {
+            var rev1 = Ext.create('mockRevision',{ ObjectID: 1, Description: "SCHEDULE STATE changed from [Defined] to [Completed]" });
+            var rev2 = Ext.create('mockRevision',{ ObjectID: 2, Description: "RANK moved up" });
+            var rev3 = Ext.create('mockRevision',{ ObjectID: 3, Description: "SCHEDULE STATE changed from [Completed] to [Finished]" });
+        
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(
+                [rev1,rev2,rev3], 'Schedule State', 'In-Progress', 'Accepted',['Defined','In-Progress','Completed','Accepted','Finished']);
+            expect( found_revisions.length ).toEqual(2);
+            expect( found_revisions[0].get('ObjectID') ).toEqual(1);
+            expect( found_revisions[1].get('ObjectID') ).toEqual(3);
+            
+        });
+        
+        it('should not find the revisions that crossed two states if first state skipped directly to second state and ordered array of valid states provided', function() {
+            var rev1 = Ext.create('mockRevision',{ ObjectID: 1, Description: "SCHEDULE STATE changed from [Defined] to [Completed]" });
+            var rev2 = Ext.create('mockRevision',{ ObjectID: 2, Description: "RANK moved up" });
+            var rev3 = Ext.create('mockRevision',{ ObjectID: 3, Description: "SCHEDULE STATE changed from [Completed] to [Finished]" });
+        
+            var found_revisions = Rally.technicalservices.util.Parser.findEntryExitRevisions(
+                [rev1,rev2,rev3], 'Schedule State', 'In-Progress', 'Completed',['Defined','In-Progress','Completed','Accepted','Finished']);
+            expect( found_revisions.length ).toEqual(0);
+            
+        });        
     });
 });
