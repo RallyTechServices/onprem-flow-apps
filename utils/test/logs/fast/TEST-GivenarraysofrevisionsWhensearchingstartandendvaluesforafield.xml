@@ -1,13 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
+<<<<<<< HEAD
   <testsuite name="Given arrays of revisions When searching start and end values for a field" errors="0" tests="10" failures="0" time="0.007" timestamp="2014-12-07T02:24:24.892Z">
+=======
+  <testsuite name="Given arrays of revisions When searching start and end values for a field" errors="0" tests="7" failures="0" time="0.004" timestamp="2014-12-01T23:44:02.365Z">
+>>>>>>> 01a602c2f3eda08ee92005c20aa43670b6959f45
     
-      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should find the revisions that entered two states" time="0.001">
+      <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should find the revisions that entered two states" time="0">
         
       </testcase>
     
-      <testcase assertions="1" classname="Given arrays of revisions When searching start and end values for a field" name="should return empty array if only the start state is found" time="0.001">
+      <testcase assertions="1" classname="Given arrays of revisions When searching start and end values for a field" name="should return empty array if only the start state is found" time="0">
         
       </testcase>
     
@@ -28,6 +32,7 @@
       </testcase>
     
       <testcase assertions="3" classname="Given arrays of revisions When searching start and end values for a field" name="should assume the creation state is the initial one if provided in the time frame" time="0">
+<<<<<<< HEAD
         
       </testcase>
     
@@ -40,6 +45,8 @@
       </testcase>
     
       <testcase assertions="1" classname="Given arrays of revisions When searching start and end values for a field" name="should not find the revisions that crossed two states if first state skipped directly to second state and ordered array of valid states provided" time="0">
+=======
+>>>>>>> 01a602c2f3eda08ee92005c20aa43670b6959f45
         
       </testcase>
     

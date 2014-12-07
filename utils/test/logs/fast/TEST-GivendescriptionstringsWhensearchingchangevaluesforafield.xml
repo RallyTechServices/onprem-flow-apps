@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <testsuites>
 
+<<<<<<< HEAD
   <testsuite name="Given description strings When searching change values for a field" errors="0" tests="6" failures="0" time="0.004" timestamp="2014-12-07T02:24:24.896Z">
+=======
+  <testsuite name="Given description strings When searching change values for a field" errors="0" tests="6" failures="0" time="0.004" timestamp="2014-12-01T23:44:02.371Z">
+>>>>>>> 01a602c2f3eda08ee92005c20aa43670b6959f45
     
       <testcase assertions="3" classname="Given description strings When searching change values for a field" name="should find the old and new values for a given field" time="0.001">
         

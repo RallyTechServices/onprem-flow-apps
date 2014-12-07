@@ -3,14 +3,14 @@
 <head>
     <title>Project Growth</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Nov 30 2014 19:40:21 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Dec 01 2014 12:48:35 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Nov 30 2014 19:40:21 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Mon Dec 01 2014 12:48:35 GMT-0700 (MST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
-    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0rc3/sdk-debug.js?apiKey=_PUT_APIKEY_HERE_"></script>
+    <script type="text/javascript" src="https://demo-west.rallydev.com/apps/2.0rc3/sdk-debug.js?apiKey=_PUT_APIKEY_HERE_"></script>
 
     <script type="text/javascript">
         Rally.onReady(function() {
@@ -143,43 +143,56 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     items: [
-        {xtype:'container',itemId:'message_box',tpl:'Hello, <tpl>{_refObjectName}</tpl>'},
         {xtype:'container',itemId:'display_box'},
         {xtype:'tsinfolink'}
     ],
     launch: function() {
-        this.down('#message_box').update(this.getContext().getUser());
-        
-        var m_name = 'Defect',
-        m_fields = ['Name','State'];
-        
-        this._loadAStoreWithAPromise(m_name, m_fields).then({
+        this._getWorkspaces('projects').then({
             scope: this,
-            success: function(store){
-                this.down('#display_box').add({
-                    xtype: 'rallygrid',
-                    store: store,
-                    columnCfgs: m_fields
-                });
+            success: function(histories){
+                this.logger.log("Found histories:", histories.length, histories);
             },
             failure: function(error_message){
                 alert(error_message);
             }
         });
     },
-    _loadAStoreWithAPromise: function(model_name, model_fields){
+    _getWorkspaces: function(state_field){
         var deferred = Ext.create('Deft.Deferred');
+        var model = 'Workspace';
+        var me = this;
+        this.logger.log("Getting ", model, ".", state_field);
         
-        var defectStore = Ext.create('Rally.data.wsapi.Store', {
-            model: model_name,
-            fetch: model_fields,
+        var state_field_name = state_field;
+
+        Ext.create('Rally.data.wsapi.Store', {
+            model: model,
+            fetch: ['Name','ObjectID'],
+            limit: 600,
             autoLoad: true,
             listeners: {
+                scope: this,
                 load: function(store, records, successful) {
                     if (successful){
-                        deferred.resolve(store);
+                        this.logger.log("Found records:", records.length, records);
+                        var promises = [];
+                        Ext.Array.each(records,function(record){
+                            var p = function(){
+                                return me._getHistoryForRecord(record,state_field);
+                            }
+                            promises.push(p);
+                        },this);
+                        
+                        //this.logger.log("Executing ", promises.length, " promises");
+                        Deft.Chain.parallel(promises).then({
+                            success: function(histories) {
+                                deferred.resolve(histories);
+                            },
+                            failure: deferred.reject
+                        });
+                        
                     } else {
-                        deferred.reject('Failed to load store for model [' + model_name + '] and fields [' + model_fields.join(',') + ']');
+                        deferred.reject('Failed to load store for model [' + model + ']');
                     }
                 }
             }

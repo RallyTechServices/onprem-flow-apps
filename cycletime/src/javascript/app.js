@@ -223,7 +223,7 @@ Ext.define('CustomApp', {
                         });
                         
                     } else {
-                        deferred.reject('Failed to load store for model [' + model_name + '] and fields [' + model_fields.join(',') + ']');
+                        deferred.reject('Failed to load store for model [' + model + ']');
                     }
                 }
             }

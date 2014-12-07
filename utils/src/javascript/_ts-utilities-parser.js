@@ -36,12 +36,25 @@ Ext.define('Rally.technicalservices.util.Parser', {
                 original_value = "";
             }
         }
+        
+        if ( original_value === null && new_value === null && Ext.util.Format.uppercase(field_name) == 'PROJECTS') {
+            // Handle a revision entry on demo-west (Jan-2009): "Added project Project 3"
+            regex = new RegExp( "^Added project (.*)$" );
+            matches = this._getMatches(text_string, regex);
+
+            if ( matches.length > 0 ) {
+                new_value = matches[0];
+                original_value = "";
+            }
+        }
+        
         return {
             description: text_string,
             new_value: new_value,
             original_value: original_value
         };
     },
+    
     /**
      * given an array of revision objects, find the first revision that changed to the first state and the last
      * revision that changed to the last state
@@ -100,6 +113,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
         
         return matching_revisions;
     },
+    
     /*
      * Given an array of revisions and a field name that holds the state,
      * find all the state transitions and return an array of objects
