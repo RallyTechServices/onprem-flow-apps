@@ -116,7 +116,6 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 load: function(store, records, success){
-                    console.log(success, records[0]);
                     if (success){
                         this.logger.log("Total workspace count", records[0].get('Workspaces').Count);
                         records[0].getCollection('Workspaces',{
