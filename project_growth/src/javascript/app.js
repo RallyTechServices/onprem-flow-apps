@@ -11,53 +11,65 @@ Ext.define('CustomApp', {
             scope: this,
             success: function(histories){
                 this.setLoading('Calculating...');
-                this.logger.log("Found histories:", histories.length, histories);
+                this.logger.log("Found histories:", histories);
                 
                 // 1.) Get an array of all the days between the first rev-hist and today (x-axis - categories)).
-                var first_date = new Date(); // date = Fri Jan 02 2009 07:36:56 GMT-0700 (MST)
-                var ws_name = 'WS Name here';
-                Ext.Object.each(histories[0],function(key,history){
-                    var revdate = history.revisions[0].get('CreationDate');
-                    ws_name = history.record.get('Name');
-                    if (revdate < first_date) {
-                        first_date = revdate;
-                    }
-                });
+                var first_date = this._getEarliestRevisionDate(histories);
                 this.logger.log("First revision-history date = ",first_date);
                 var array_of_days = Rally.technicalservices.util.Utilities.arrayOfDaysBetween(new Date(first_date),new Date(),false);
-                this.logger.log("Total days covered = ",array_of_days);
+                this.logger.log("Total days covered", array_of_days);
                 
-                // 2.) Cycle thru the revisions and make a running count (y-axis - series)
-                var count_hash = {};
-                var counter = 1; // Allow for Rally's 'Sample' project which never shows up in rev hist.
-                Ext.Array.each(array_of_days,function(day){
-                    Ext.Object.each(histories[0],function(key,history){
-                        Ext.Array.each(history.revisions,function(revision){
-                            var revdate = revision.get('CreationDate');
-                            if (revdate > day && revdate < Rally.util.DateTime.add(day,'day',+1)) {
-                                counter++;
-                            }
+                var series = []; 
+                Ext.each(histories, function(history){
+                    if (history.record && history.revisions && history.revisions.length > 0){
+                        var ws_name = history.record.get('Name');  //WS Name here';
+                        
+                        // 2.) Cycle thru the revisions and make a running count (y-axis - series)
+                        var count_hash = {};
+                        var counter = 1; // Allow for Rally's 'Sample' project which never shows up in rev hist.
+                        Ext.Array.each(array_of_days,function(day){
+                            Ext.Array.each(history.revisions,function(revision){
+                                var revdate = revision.get('CreationDate');
+                                if (revdate > day && revdate < Rally.util.DateTime.add(day,'day',+1)) {
+                                    counter++;
+                                }
+                            });
+                            count_hash[day] = counter;
                         });
-                       
-                    });
-                    count_hash[day] = counter;
-                });
-                var series_data = [];
-                Ext.Object.each(count_hash,function(day,value){
-                    series_data.push(value);
-                });
-                var series = {type:'area',name:ws_name,stack:1,data:series_data};
+                        
+                        var series_data = [];
+                        Ext.Object.each(count_hash,function(day,value){
+                            series_data.push(value);
+                        });
+                        series.push({type:'area',name:ws_name,stack:1,data:series_data});
+                    }
+                },this);
                 
                 // 3.) Make chart
                 this.setLoading(false);
-                this._makeChart(array_of_days,[series]);
+                this._makeChart(array_of_days,series);
             },
             failure: function(error_message){
                 alert(error_message);
             }
         });
     },
-    
+    _getEarliestRevisionDate: function(histories){
+        
+        this.logger.log('_getEarliestRevisionDate');
+        var first_date = new Date(); 
+        Ext.each(histories, function(history){
+            if (history.revisions && history.revisions.length > 0){
+                var revdate = history.revisions[0].get('CreationDate');
+                if (revdate < first_date) {
+                    first_date = revdate;
+                }
+            }
+        },this);
+        this.logger.log("_getEarliestRevisionDate: First revision-history date = ",first_date);
+        return first_date;
+        
+    },
     _makeChart: function(categories,serieses){
         this.logger.log('_makeChart');
         var formatted_categories = [];
@@ -93,56 +105,59 @@ Ext.define('CustomApp', {
                 }
             }
         });
-    },
-        
+    },  
     _getWorkspaces: function(state_field){
         var deferred = Ext.create('Deft.Deferred');
-        this.setLoading('Get WS data...');
-        var model = 'Workspace';
         var me = this;
-        this.logger.log("Getting ", model, ".", state_field);
-        
-        //var state_field_name = state_field;
-
         Ext.create('Rally.data.wsapi.Store', {
-            model: model,
-            fetch: ['Name','ObjectID','RevisionHistory'],
-            limit: 600,
+            model: 'Subscription',
+            fetch: ['Workspaces'],
             autoLoad: true,
             listeners: {
                 scope: this,
-                load: function(store, records, successful) {
-                    if (successful){
-                        this.logger.log("Found workspaces:", records.length, records);
-                        var promises = [];
-                        Ext.Array.each(records,function(record){
-                            var p = function(){
-                                return me._getHistoryForRecord(record,state_field);
+                load: function(store, records, success){
+                    console.log(success, records[0]);
+                    if (success){
+                        this.logger.log("Total workspace count", records[0].get('Workspaces').Count);
+                        records[0].getCollection('Workspaces',{
+                                fetch: ['ObjectID','Name','RevisionHistory','State'],
+                                limit: 500,
+                                buffered: false
+                        }).load({
+                            callback: function(records, operation, success){
+                                var promises = []; 
+                                me.logger.log('getCollection callback.  Total workspaces:',records.length);
+                                Ext.Array.each(records,function(record){
+                                    if (record.get('State') == 'Open'){
+                                        var p = function(){
+                                            return me._getHistoryForRecord(record,state_field);
+                                        }
+                                        promises.push(p);
+                                    }
+                                },this);
+                                me.logger.log('Open workspaces',promises.length);
+                                Deft.Chain.parallel(promises).then({
+                                    success: function(histories) {
+                                        deferred.resolve(histories);
+                                    },
+                                    failure: deferred.reject
+                                });
                             }
-                            promises.push(p);
-                        },this);
-                        
-                        //this.logger.log("Executing ", promises.length, " promises");
-                        Deft.Chain.parallel(promises).then({
-                            success: function(histories) {
-                                deferred.resolve(histories);
-                            },
-                            failure: deferred.reject
-                        });
-                        
+                       });
+                       
                     } else {
-                        deferred.reject('Failed to load store for model [' + model + ']');
+                        deferred.reject('Error getting list of workspaces');
                     }
                 }
             }
         });
-        return deferred.promise;
+        return deferred;  
     },
     
     _getHistoryForRecord: function(record,state_field) {
         var deferred = Ext.create('Deft.Deferred');
         this.setLoading('Get Revision data...');
-        this.logger.log('getting history for ', record.get('Name'));
+        this.logger.log('getting history for ', record.get('Name'),record.get('ObjectID'),record.get('_ref'),record.get('RevisionHistory').ObjectID);
         
         // contains searches are case insensitive, so 
         // TODO: deal with possibility that the name of the field is in the description change
@@ -167,15 +182,15 @@ Ext.define('CustomApp', {
         Ext.create('Rally.data.wsapi.Store',{
             autoLoad: true,
             model:'Revision',
+            context: {workspace: record.get('_ref'),
+                project: null},
             filters: filters,
             limit: 'Infinity',
             fetch: ['Description','CreationDate'],
             sorters: [{property:'CreationDate',direction:'ASC'}],
             listeners: {
                 scope: this,
-                load: function(store,revisions){
-                    //this.logger.log('revs for ', record.get('FormattedID'), ':',revisions);
-                    var rev_hash = {};
+                load: function(store,revisions,success){
                     var matching_revs = [];
                     Ext.Array.each(revisions,function(rev){
                         var description = rev.get('Description');
@@ -184,14 +199,14 @@ Ext.define('CustomApp', {
                             matching_revs.push(rev);
                         }
                     });
-                    if ( matching_revs.length > 1 ) {
-                        rev_hash[record.get('ObjectID')] = {record: record, revisions: matching_revs};
+                    if (success && matching_revs.length > 1){  //TODO:  why is this greater than 1 and not greater than 0?
+                        deferred.resolve({record: record, revisions: matching_revs});
+                    } else {
+                        deferred.resolve({});
                     }
-                    deferred.resolve(rev_hash);
                 }
             }
         });
-
         return deferred.promise;        
     }
 });
