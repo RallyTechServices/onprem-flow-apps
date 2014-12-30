@@ -6,6 +6,8 @@ Ext.define('CustomApp', {
         {xtype:'container',itemId:'display_box'},
         {xtype:'tsinfolink'}
     ],
+    EXPORT_FILE_NAME: 'project-growth-export.csv',
+    MAX_WORKSPACES: 500, 
     launch: function() {
         this._getWorkspaces('projects').then({
             scope: this,
@@ -76,6 +78,7 @@ Ext.define('CustomApp', {
         Ext.Array.each(categories,function(category){
             formatted_categories.push(Ext.util.Format.date(category,'Y-m-d'));
         });
+        
         this.down('#display_box').add({
             xtype:'rallychart',
             chartData: {
@@ -105,7 +108,38 @@ Ext.define('CustomApp', {
                 }
             }
         });
+        
+        this.down('#display_box').add({
+            xtype: 'rallybutton',
+            text: 'Export',
+            margin: 10,  
+            listeners: {
+                scope: this, 
+                click: function(){
+                    this._exportData(serieses);
+                }
+            }
+        });
     },  
+    _exportData: function(serieses){
+        this.logger.log('_exportData');
+        var current_date = new Date(); 
+        var text = Ext.String.format("Workspace, Current Projects ({0})\n",Rally.util.DateTime.format(current_date,'MM/dd/yyyy'));
+        Ext.each(serieses, function(series){
+            var current_num_projects = 0;
+            var name = '';
+            if (series && series.name){
+                name = series.name; 
+                if (series.data && series.data.length > 0){
+                    current_num_projects=series.data[series.data.length-1];
+                }
+            }
+            text += Ext.String.format("{0},{1}\n",name, current_num_projects);
+        },this);
+        var file_name = Rally.util.DateTime.format(current_date,'yyyy-MM-dd_hh-mm-ss-') + this.EXPORT_FILE_NAME;
+        this.logger.log('_exportData', text, file_name);
+        Rally.technicalservices.FileUtilities.saveTextAsFile(text,file_name);
+    },
     _getWorkspaces: function(state_field){
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
@@ -120,7 +154,7 @@ Ext.define('CustomApp', {
                         this.logger.log("Total workspace count", records[0].get('Workspaces').Count);
                         records[0].getCollection('Workspaces',{
                                 fetch: ['ObjectID','Name','RevisionHistory','State'],
-                                limit: 500,
+                                limit: this.MAX_WORKSPACES,
                                 buffered: false
                         }).load({
                             callback: function(records, operation, success){

@@ -3,11 +3,11 @@
 <head>
     <title>Project Growth</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Dec 28 2014 19:53:18 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Dec 30 2014 12:53:44 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Dec 28 2014 19:53:18 GMT-0700 (MST)";
-        var CHECKSUM = 14294169292;
+        var APP_BUILD_DATE = "Tue Dec 30 2014 12:53:44 GMT-0700 (MST)";
+        var CHECKSUM = 18486105572;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -138,6 +138,68 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.define('Rally.technicalservices.FileUtilities', {
+    singleton: true,
+    logger: new Rally.technicalservices.Logger(),
+    
+    saveTextAsFile: function(textToWrite, fileName)
+    {
+        var textFileAsBlob = new Blob([textToWrite], {type:'text/plain'});
+        var fileNameToSaveAs = fileName;
+
+        var downloadLink = document.createElement("a");
+        downloadLink.download = fileNameToSaveAs;
+        downloadLink.innerHTML = "Download File";
+        if (window.webkitURL != null)
+        {
+            // Chrome allows the link to be clicked
+            // without actually adding it to the DOM.
+            downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+        }
+        else
+        {
+            // Firefox requires the link to be added to the DOM
+            // before it can be clicked.
+            downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+            downloadLink.onclick = destroyClickedElement;
+            downloadLink.style.display = "none";
+            document.body.appendChild(downloadLink);
+        }
+        downloadLink.click();
+    },
+    destroyClickedElement: function(event)
+    {
+        document.body.removeChild(event.target);
+    },
+    convertDataArrayToCSVText: function(data_array, requestedFieldHash){
+       
+        var text = '';
+        Ext.each(Object.keys(requestedFieldHash), function(key){
+            text += requestedFieldHash[key] + ',';
+        });
+        text = text.replace(/,$/,'\n');
+        
+        Ext.each(data_array, function(d){
+            Ext.each(Object.keys(requestedFieldHash), function(key){
+                if (d[key]){
+                    if (typeof d[key] === 'object'){
+                        if (d[key].FormattedID) {
+                            text += Ext.String.format("\"{0}\",",d[key].FormattedID ); 
+                        } else {
+                            text += Ext.String.format("\"{0}\",",d[key].Name );                    
+                        }
+                    } else {
+                        text += Ext.String.format("\"{0}\",",d[key] );                    
+                    }
+                } else {
+                    text += ',';
+                }
+            },this);
+            text = text.replace(/,$/,'\n');
+        },this);
+        return text;
+    }
+});
 Ext.define('CustomApp', {
     extend: 'Rally.app.App',
     componentCls: 'app',
@@ -146,6 +208,8 @@ Ext.define('CustomApp', {
         {xtype:'container',itemId:'display_box'},
         {xtype:'tsinfolink'}
     ],
+    EXPORT_FILE_NAME: 'project-growth-export.csv',
+    MAX_WORKSPACES: 500, 
     launch: function() {
         this._getWorkspaces('projects').then({
             scope: this,
@@ -216,6 +280,7 @@ Ext.define('CustomApp', {
         Ext.Array.each(categories,function(category){
             formatted_categories.push(Ext.util.Format.date(category,'Y-m-d'));
         });
+        
         this.down('#display_box').add({
             xtype:'rallychart',
             chartData: {
@@ -245,7 +310,38 @@ Ext.define('CustomApp', {
                 }
             }
         });
+        
+        this.down('#display_box').add({
+            xtype: 'rallybutton',
+            text: 'Export',
+            margin: 10,  
+            listeners: {
+                scope: this, 
+                click: function(){
+                    this._exportData(serieses);
+                }
+            }
+        });
     },  
+    _exportData: function(serieses){
+        this.logger.log('_exportData');
+        var current_date = new Date(); 
+        var text = Ext.String.format("Workspace, Current Projects ({0})\n",Rally.util.DateTime.format(current_date,'MM/dd/yyyy'));
+        Ext.each(serieses, function(series){
+            var current_num_projects = 0;
+            var name = '';
+            if (series && series.name){
+                name = series.name; 
+                if (series.data && series.data.length > 0){
+                    current_num_projects=series.data[series.data.length-1];
+                }
+            }
+            text += Ext.String.format("{0},{1}\n",name, current_num_projects);
+        },this);
+        var file_name = Rally.util.DateTime.format(current_date,'yyyy-MM-dd_hh-mm-ss-') + this.EXPORT_FILE_NAME;
+        this.logger.log('_exportData', text, file_name);
+        Rally.technicalservices.FileUtilities.saveTextAsFile(text,file_name);
+    },
     _getWorkspaces: function(state_field){
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
@@ -260,7 +356,7 @@ Ext.define('CustomApp', {
                         this.logger.log("Total workspace count", records[0].get('Workspaces').Count);
                         records[0].getCollection('Workspaces',{
                                 fetch: ['ObjectID','Name','RevisionHistory','State'],
-                                limit: 500,
+                                limit: this.MAX_WORKSPACES,
                                 buffered: false
                         }).load({
                             callback: function(records, operation, success){
