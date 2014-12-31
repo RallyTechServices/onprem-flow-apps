@@ -3,11 +3,11 @@
 <head>
     <title>Project Growth</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 30 2014 18:45:26 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Dec 30 2014 18:51:17 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 30 2014 18:45:26 GMT-0700 (MST)";
-        var CHECKSUM = 22848290467;
+        var APP_BUILD_DATE = "Tue Dec 30 2014 18:51:17 GMT-0700 (MST)";
+        var CHECKSUM = 22462979345;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -387,17 +387,8 @@ Ext.define('CustomApp', {
             },
             listeners: {
                 scope: this,
-                chartRendered: function(chart){
-                    console.log('chartRendered',chart);
-                },
-                show: function(chart){
-                    console.log('show',chart);
-                },
-                render: function(chart){
-                    console.log('render',chart);
-                },
                 afterrender: function(chart){
-                    console.log('afterrender',chart);
+                    chart._unmask();
                 }
             }
         });   

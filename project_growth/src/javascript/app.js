@@ -185,17 +185,8 @@ Ext.define('CustomApp', {
             },
             listeners: {
                 scope: this,
-                chartRendered: function(chart){
-                    console.log('chartRendered',chart);
-                },
-                show: function(chart){
-                    console.log('show',chart);
-                },
-                render: function(chart){
-                    console.log('render',chart);
-                },
                 afterrender: function(chart){
-                    console.log('afterrender',chart);
+                    chart._unmask();
                 }
             }
         });   
