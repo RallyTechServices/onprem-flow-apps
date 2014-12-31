@@ -127,7 +127,8 @@ Ext.define('CustomApp', {
         });       
     },
     _updateChart: function(){
-
+        this.setLoading('Redrawing chart...');
+        
         var categories = Ext.clone(this.down('#chart-project-growth').chartConfig.xAxis[0].categories);
         var series = Ext.clone(this.down('#chart-project-growth').chartData.series);  
         
@@ -149,6 +150,7 @@ Ext.define('CustomApp', {
         this.logger.log('_updateChart',categories, series,x_min_ordinal, x_max_ordinal);
         
         this._redrawChart(categories,series,x_min_ordinal, x_max_ordinal);
+        this.setLoading(false);
     },
     _redrawChart: function(categories,serieses,x_min, x_max){
         this.down('#display_box').removeAll();
@@ -209,7 +211,7 @@ Ext.define('CustomApp', {
     _exportData: function(serieses){
         var serieses = null;
         if (this.down('#chart-project-growth')){
-            this.down('#chart-project-growth').chartData.series;  
+            var serieses = this.down('#chart-project-growth').chartData.series;  
         }
         if (serieses == null){
             alert('No chart data to export!');
