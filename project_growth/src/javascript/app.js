@@ -3,58 +3,53 @@ Ext.define('CustomApp', {
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
     items: [
+        {xtype:'container',itemId:'select_box', layout: {type:'hbox'}},
         {xtype:'container',itemId:'display_box'},
         {xtype:'tsinfolink'}
     ],
     EXPORT_FILE_NAME: 'project-growth-export.csv',
     MAX_WORKSPACES: 500, 
     launch: function() {
-        this._getWorkspaces('projects').then({
-            scope: this,
-            success: function(histories){
-                this.setLoading('Calculating...');
-                this.logger.log("Found histories:", histories);
-                
-                // 1.) Get an array of all the days between the first rev-hist and today (x-axis - categories)).
-                var first_date = this._getEarliestRevisionDate(histories);
-                this.logger.log("First revision-history date = ",first_date);
-                var array_of_days = Rally.technicalservices.util.Utilities.arrayOfDaysBetween(new Date(first_date),new Date(),false);
-                this.logger.log("Total days covered", array_of_days);
-                
-                var series = []; 
-                Ext.each(histories, function(history){
-                    if (history.record && history.revisions && history.revisions.length > 0){
-                        var ws_name = history.record.get('Name');  //WS Name here';
-                        
-                        // 2.) Cycle thru the revisions and make a running count (y-axis - series)
-                        var count_hash = {};
-                        var counter = 1; // Allow for Rally's 'Sample' project which never shows up in rev hist.
-                        Ext.Array.each(array_of_days,function(day){
-                            Ext.Array.each(history.revisions,function(revision){
-                                var revdate = revision.get('CreationDate');
-                                if (revdate > day && revdate < Rally.util.DateTime.add(day,'day',+1)) {
-                                    counter++;
-                                }
-                            });
-                            count_hash[day] = counter;
-                        });
-                        
-                        var series_data = [];
-                        Ext.Object.each(count_hash,function(day,value){
-                            series_data.push(value);
-                        });
-                        series.push({type:'area',name:ws_name,stack:1,data:series_data});
-                    }
-                },this);
-                
-                // 3.) Make chart
-                this.setLoading(false);
-                this._makeChart(array_of_days,series);
-            },
-            failure: function(error_message){
-                alert(error_message);
+        
+        this.down('#select_box').add({
+            xtype: 'rallydatefield',
+            itemId: 'dt-start',
+            labelAlign: 'right',
+            fieldLabel: 'Start Date',
+            margin: 10,
+        });
+        this.down('#select_box').add({
+            xtype: 'rallydatefield',
+            itemId: 'dt-end',
+            fieldLabel: 'End Date',
+            labelAlign: 'right',
+            margin: 10,
+            value: new Date()
+        }); 
+        
+        this.down('#select_box').add({
+            xtype: 'rallybutton',
+            text: 'Update',
+            margin: 10,
+            listeners: {
+                scope: this,
+                click: this._updateChart
             }
         });
+        
+        this.down('#select_box').add({
+            xtype: 'rallybutton',
+            text: 'Export',
+            itemId: 'btn-export',
+            margin: 10,  
+            disabled: true, 
+            listeners: {
+                scope: this, 
+                click: this._exportData
+            }
+        });
+        this._createChart();
+        
     },
     _getEarliestRevisionDate: function(histories){
         
@@ -72,15 +67,94 @@ Ext.define('CustomApp', {
         return first_date;
         
     },
-    _makeChart: function(categories,serieses){
-        this.logger.log('_makeChart');
-        var formatted_categories = [];
-        Ext.Array.each(categories,function(category){
-            formatted_categories.push(Ext.util.Format.date(category,'Y-m-d'));
-        });
+    _createChart: function(){
+        this.logger.log('_createChart');  
+        this.setLoading('Calculating...');
+        this.down('#btn-export').setDisabled(true);
         
+        this._getWorkspaces('projects').then({
+            scope: this,
+            success: function(histories){
+                
+                this.logger.log("Found histories:", histories);
+                
+                // 1.) Get an array of all the days between the first rev-hist and today (x-axis - categories)).
+                var first_date = this._getEarliestRevisionDate(histories);
+                this.logger.log("First revision-history date = ",first_date);
+                var array_of_days = Rally.technicalservices.util.Utilities.arrayOfDaysBetween(new Date(first_date),new Date(),false);
+                this.logger.log("Total days covered", array_of_days);
+                
+                this.down('#dt-start').setMinValue(first_date);
+                this.down('#dt-start').setValue(first_date);
+                this.down('#dt-end').setMaxValue(new Date());
+                this.down('#dt-end').setValue(new Date());
+                
+                var series = []; 
+                Ext.each(histories, function(history){
+                    if (history.record && history.revisions && history.revisions.length > 0){
+                        var ws_name = history.record.get('Name');  //WS Name here';
+                        
+                        // 2.) Cycle thru the revisions and make a running count (y-axis - series)
+                        var count_hash = {};
+                        var counter = 1; // Allow for Rally's 'Sample' project which never shows up in rev hist.
+                        Ext.Array.each(array_of_days,function(day){
+                            Ext.Array.each(history.revisions,function(revision){
+                                var revdate = revision.get('CreationDate');
+                                if (revdate > day && revdate < Rally.util.DateTime.add(day,'day',+1)) {
+                                    counter++;
+                                } 
+                            });
+                            count_hash[day] = counter;
+                        });
+                        
+                        var series_data = [];
+                        Ext.Object.each(count_hash,function(day,value){
+                            series_data.push(value);
+                        });
+                        series.push({type:'area',name:ws_name,stack:1,data:series_data});
+                    }
+                },this);
+                
+                // 3.) Make chart
+                
+                this.down('#btn-export').setDisabled(false);
+                this._makeChart(array_of_days,series);
+                this.setLoading(false);
+            },
+            failure: function(error_message){
+                alert(error_message);
+            }
+        });       
+    },
+    _updateChart: function(){
+
+        var categories = Ext.clone(this.down('#chart-project-growth').chartConfig.xAxis[0].categories);
+        var series = Ext.clone(this.down('#chart-project-growth').chartData.series);  
+        
+        var x_min = Ext.util.Format.date(this.down('#dt-start').getValue(),'Y-m-d');
+        var x_max = Ext.util.Format.date(this.down('#dt-end').getValue(),'Y-m-d');
+        var x_min_ordinal = 0;
+        var x_max_ordinal = categories.length-1;
+        
+        for (var i=0; i < categories.length; i++){
+            var category_date = Ext.util.Format.date(categories[i],'Y-m-d');
+            if (x_min == category_date){
+                x_min_ordinal = i;
+            }
+            if (x_max == category_date){
+                x_max_ordinal = i;
+            }
+        }
+
+        this.logger.log('_updateChart',categories, series,x_min_ordinal, x_max_ordinal);
+        
+        this._redrawChart(categories,series,x_min_ordinal, x_max_ordinal);
+    },
+    _redrawChart: function(categories,serieses,x_min, x_max){
+        this.down('#display_box').removeAll();
         this.down('#display_box').add({
             xtype:'rallychart',
+            itemId:  'chart-project-growth',
             chartData: {
                 series: serieses
             },
@@ -94,11 +168,13 @@ Ext.define('CustomApp', {
                 xAxis: [{
                     tickmarkPlacement: 'on',
                     tickInterval: 56,
-                    categories:  formatted_categories,
+                    categories:  categories,
                     labels: {
                         align: 'left',
                         rotation: 70
-                    }
+                    },
+                    min: x_min,
+                    max: x_max
                 }],
                 plotOptions: {
                     series: {
@@ -106,23 +182,50 @@ Ext.define('CustomApp', {
                         stacking: 'normal'
                     }
                 }
-            }
-        });
-        
-        this.down('#display_box').add({
-            xtype: 'rallybutton',
-            text: 'Export',
-            margin: 10,  
+            },
             listeners: {
-                scope: this, 
-                click: function(){
-                    this._exportData(serieses);
+                scope: this,
+                chartRendered: function(chart){
+                    console.log('chartRendered',chart);
+                },
+                show: function(chart){
+                    console.log('show',chart);
+                },
+                render: function(chart){
+                    console.log('render',chart);
+                },
+                afterrender: function(chart){
+                    console.log('afterrender',chart);
                 }
             }
-        });
-    },  
+        });   
+   },
+    
+    _makeChart: function(categories,serieses){
+        this.logger.log('_makeChart');
+
+        var formatted_categories = [];
+        for (var i=0; i < categories.length; i++){
+            var category_date = Ext.util.Format.date(categories[i],'Y-m-d');
+            formatted_categories.push(category_date);
+        }
+
+        var x_min = 0;
+        var x_max = formatted_categories.length-1;
+
+        this._redrawChart(formatted_categories, serieses, x_min, x_max)
+     },  
     _exportData: function(serieses){
-        this.logger.log('_exportData');
+        var serieses = null;
+        if (this.down('#chart-project-growth')){
+            this.down('#chart-project-growth').chartData.series;  
+        }
+        if (serieses == null){
+            alert('No chart data to export!');
+            return;  
+        }
+        this.logger.log('_exportData', serieses);
+        
         var current_date = new Date(); 
         var text = Ext.String.format("Workspace, Current Projects ({0})\n",Rally.util.DateTime.format(current_date,'MM/dd/yyyy'));
         Ext.each(serieses, function(series){
