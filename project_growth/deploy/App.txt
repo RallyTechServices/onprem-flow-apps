@@ -3,11 +3,11 @@
 <head>
     <title>Project Growth</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 30 2014 19:00:43 GMT-0700 (MST) -->
+    <!--  Build Date: Tue Dec 30 2014 19:17:00 GMT-0700 (MST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 30 2014 19:00:43 GMT-0700 (MST)";
-        var CHECKSUM = 22611398154;
+        var APP_BUILD_DATE = "Tue Dec 30 2014 19:17:00 GMT-0700 (MST)";
+        var CHECKSUM = 22796410795;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -533,6 +533,7 @@ Ext.define('CustomApp', {
                     if (success && matching_revs.length > 1){  //TODO:  why is this greater than 1 and not greater than 0?
                         deferred.resolve({record: record, revisions: matching_revs});
                     } else {
+                        this.logger.log('No ' + state_field + ' matching revs or history for workspace: ', record.get('Name'));
                         deferred.resolve({});
                     }
                 }

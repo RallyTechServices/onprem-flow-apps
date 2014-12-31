@@ -331,6 +331,7 @@ Ext.define('CustomApp', {
                     if (success && matching_revs.length > 1){  //TODO:  why is this greater than 1 and not greater than 0?
                         deferred.resolve({record: record, revisions: matching_revs});
                     } else {
+                        this.logger.log('No ' + state_field + ' matching revs or history for workspace: ', record.get('Name'));
                         deferred.resolve({});
                     }
                 }
