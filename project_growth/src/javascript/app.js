@@ -210,29 +210,52 @@ Ext.define('CustomApp', {
      },  
     _exportData: function(serieses){
         var serieses = null;
+        var categories = null; 
         if (this.down('#chart-project-growth')){
-            var serieses = this.down('#chart-project-growth').chartData.series;  
+            serieses = this.down('#chart-project-growth').chartData.series;  
+            categories = this.down('#chart-project-growth').chartConfig.xAxis[0].categories;  
         }
-        if (serieses == null){
+        console.log(this.down('#chart-project-growth'), serieses, categories);
+        if (serieses == null || categories == null){
             alert('No chart data to export!');
             return;  
         }
         this.logger.log('_exportData', serieses);
         
-        var current_date = new Date(); 
-        var text = Ext.String.format("Workspace, Current Projects ({0})\n",Rally.util.DateTime.format(current_date,'MM/dd/yyyy'));
+        var start_date = Ext.util.Format.date(this.down('#dt-start').getValue(),'Y-m-d');
+        var end_date = Ext.util.Format.date(this.down('#dt-end').getValue(),'Y-m-d');
+        var start_index = 0;
+        var end_index = categories.length-1; 
+        for (var i = 0; i< categories.length;  i++){
+            if (categories[i] == start_date) {
+                start_index = i;
+            }
+            if (categories[i] == end_date){
+                end_index = i
+            }
+        }
+        console.log(start_index, end_index);
+        var text = "Workspace,";
+        for (var i = start_index;  i <= end_index; i++){
+            text += categories[i] + ',';
+        }
+        text = text.replace(/,$/,'\n');
+
         Ext.each(serieses, function(series){
-            var current_num_projects = 0;
             var name = '';
             if (series && series.name){
                 name = series.name; 
-                if (series.data && series.data.length > 0){
-                    current_num_projects=series.data[series.data.length-1];
-                }
             }
-            text += Ext.String.format("{0},{1}\n",name, current_num_projects);
+
+            text += Ext.String.format("{0},",name);
+            for (var i = start_index;  i <= end_index; i++){
+                text += series.data[i]; 
+                text += ',';
+            }
+            text = text.replace(/,$/,'\n');
         },this);
-        var file_name = Rally.util.DateTime.format(current_date,'yyyy-MM-dd_hh-mm-ss-') + this.EXPORT_FILE_NAME;
+        
+        var file_name = Rally.util.DateTime.format(new Date(),'yyyy-MM-dd_hh-mm-ss-') + this.EXPORT_FILE_NAME;
         this.logger.log('_exportData', text, file_name);
         Rally.technicalservices.FileUtilities.saveTextAsFile(text,file_name);
     },
