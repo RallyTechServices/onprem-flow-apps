@@ -10,7 +10,35 @@ Ext.define('CustomApp', {
     EXPORT_FILE_NAME: 'project-growth-export.csv',
     MAX_WORKSPACES: 500, 
     launch: function() {
-        
+
+        this.fetchWorkspaces().then({
+            scope: this,
+            success: function(workspaces){
+                this.logger.log('fetchWorkspaces Success', workspaces.length);
+                this._initialize(workspaces);
+            },
+            failure: function(msg){
+                Rally.ui.notify.Notifier.showError({message: msg});
+            }
+        });
+
+
+    },
+    _getCurrentWorkspaceRecord: function(){
+        var currentWorkspaceOid = this.getContext().getWorkspace().ObjectID;
+        var record = this.workspaces[0];
+        Ext.each(this.workspaces, function(workspace){
+            if (workspace.get('ObjectID') == currentWorkspaceOid){
+                record = workspace;
+                return false;
+            }
+        });
+        return record;
+    },
+    _initialize: function(workspaces){
+        this.workspaces = workspaces;
+        this.selectedWorkspaces = [this._getCurrentWorkspaceRecord()];
+
         this.down('#select_box').add({
             xtype: 'rallydatefield',
             itemId: 'dt-start',
@@ -25,8 +53,17 @@ Ext.define('CustomApp', {
             labelAlign: 'right',
             margin: 10,
             value: new Date()
-        }); 
-        
+        });
+
+        this.down('#select_box').add({
+            xtype: 'rallybutton',
+            text: 'Workspaces...',
+            scope: this,
+            margin: 10,
+            handler: this._selectWorkspaces
+        });
+
+
         this.down('#select_box').add({
             xtype: 'rallybutton',
             text: 'Update',
@@ -36,20 +73,37 @@ Ext.define('CustomApp', {
                 click: this._updateChart
             }
         });
-        
+
         this.down('#select_box').add({
             xtype: 'rallybutton',
             text: 'Export',
             itemId: 'btn-export',
-            margin: 10,  
-            disabled: true, 
+            margin: 10,
+            disabled: true,
             listeners: {
-                scope: this, 
+                scope: this,
                 click: this._exportData
             }
         });
         this._createChart();
-        
+
+    },
+    _selectWorkspaces: function(){
+        this.logger.log('_selectWorkspaces', this.workspaces);
+        Ext.create('Rally.technicalservices.dialog.PickerDialog',{
+            records: this.workspaces,
+            selectedRecords: this.selectedWorkspaces,
+            displayField: 'Name',
+            listeners: {
+                scope: this,
+                itemselected: this._workspacesSelected
+            }
+        });
+    },
+    _workspacesSelected: function(records){
+        this.logger.log('_workspacesSelected', records);
+        this.selectedWorkspaces = records;
+        this._createChart();
     },
     _getEarliestRevisionDate: function(histories){
         
@@ -72,7 +126,7 @@ Ext.define('CustomApp', {
         this.setLoading('Calculating...');
         this.down('#btn-export').setDisabled(true);
         
-        this._getWorkspaces('projects').then({
+        this._getWorkspaceHistories('projects').then({
             scope: this,
             success: function(histories){
                 
@@ -305,7 +359,27 @@ Ext.define('CustomApp', {
         });
         return deferred;  
     },
-    
+    _getWorkspaceHistories: function(state_field){
+        var deferred = Ext.create('Deft.Deferred');
+        var me = this;
+        var promises = [];
+
+        Ext.each(this.selectedWorkspaces, function(workspace){
+            var p = function(){
+                return me._getHistoryForRecord(workspace,state_field);
+            }
+            promises.push(p);
+        },this);
+
+        me.logger.log('Open workspaces',promises.length);
+        Deft.Chain.parallel(promises).then({
+            success: function(histories) {
+                deferred.resolve(histories);
+            },
+            failure: deferred.reject
+        });
+        return deferred;
+    },
     _getHistoryForRecord: function(record,state_field) {
         var deferred = Ext.create('Deft.Deferred');
         this.setLoading('Get Revision data...');
@@ -361,5 +435,48 @@ Ext.define('CustomApp', {
             }
         });
         return deferred.promise;        
+    },
+    fetchWorkspaces: function(){
+        var deferred = Ext.create('Deft.Deferred');
+        Ext.create('Rally.data.wsapi.Store', {
+            model: 'Subscription',
+            fetch: ['Workspaces'],
+            autoLoad: true,
+            listeners: {
+                scope: this,
+                load: function(store, records, success){
+
+                    if (success){
+                        records[0].getCollection('Workspaces',{
+                            fetch: ['ObjectID','Name','State','RevisionHistory','Projects:summary[State]'],
+                            limit: 'Infinity',
+                            buffered: false
+                        }).load({
+                            callback: function(records, operation, success){
+                                var workspaces = [];
+                                if (operation.wasSuccessful()){
+                                    Ext.Array.each(records,function(record){
+                                        var summaryInfo = record.get('Summary').Projects;
+                                        var open_project_count = summaryInfo.State['Open'];
+                                        if (record.get('State') == 'Open' && open_project_count > 0){
+                                            record.set("id", record["ObjectID"]);
+                                            workspaces.push(record);
+                                        }
+                                    },this);
+
+                                    deferred.resolve(workspaces);
+                                } else {
+                                    deferred.reject('Error loading workspace information: ' + operation.getError());
+                                }
+                            }
+                        });
+                    } else {
+                        deferred.reject('Error querying Subscription');
+                    }
+                }
+            }
+        });
+        return deferred;
     }
+
 });
