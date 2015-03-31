@@ -44,7 +44,7 @@ Ext.define('CustomApp', {
             itemId: 'dt-start',
             labelAlign: 'right',
             fieldLabel: 'Start Date',
-            margin: 10,
+            margin: 10
         });
         this.down('#select_box').add({
             xtype: 'rallydatefield',
@@ -66,7 +66,7 @@ Ext.define('CustomApp', {
 
         this.down('#select_box').add({
             xtype: 'rallybutton',
-            text: 'Update',
+            text: 'Run',
             margin: 10,
             listeners: {
                 scope: this,
@@ -311,7 +311,7 @@ Ext.define('CustomApp', {
         
         var file_name = Rally.util.DateTime.format(new Date(),'yyyy-MM-dd_hh-mm-ss-') + this.EXPORT_FILE_NAME;
         this.logger.log('_exportData', text, file_name);
-        Rally.technicalservices.FileUtilities.saveTextAsFile(text,file_name);
+        Rally.technicalservices.FileUtilities.saveCSVToFile(text,file_name);
     },
     _getWorkspaces: function(state_field){
         var deferred = Ext.create('Deft.Deferred');
