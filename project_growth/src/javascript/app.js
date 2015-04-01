@@ -185,25 +185,25 @@ Ext.define('CustomApp', {
         this.logger.log('_createChart');  
         this.setLoading('Calculating...');
         this.down('#btn-export').setDisabled(true);
-        
+        var granularity = "month";
+
         this._getWorkspaceHistories('projects').then({
             scope: this,
             success: function(histories){
-                
-                this.logger.log("Found histories:", histories);
-                
+
                 // 1.) Get an array of all the days between the first rev-hist and today (x-axis - categories)).
                 var first_date = this._getEarliestRevisionDate(histories);
-                this.logger.log("First revision-history date = ",first_date);
-                var array_of_days = Rally.technicalservices.util.Utilities.arrayOfDaysBetween(new Date(first_date),new Date(),false);
-                this.logger.log("Total days covered", array_of_days);
+                this.logger.log("Found histories:", histories, first_date,this.down('#dt-start'));
                 
                 this.down('#dt-start').setMinValue(first_date);
                 this.down('#dt-start').setValue(first_date);
-                this.down('#dt-end').setMaxValue(new Date());
-                this.down('#dt-end').setValue(new Date());
+
+                this.logger.log("First revision-history date = ",first_date);
+
+                var array_of_intervals = Rally.technicalservices.Toolbox.getDateBuckets(new Date(first_date), new Date(), granularity);
+                this.logger.log("Total days covered", array_of_intervals);
                 
-                var series = []; 
+                var series = [];
                 Ext.each(histories, function(history){
                     if (history.record && history.revisions && history.revisions.length > 0){
                         var ws_name = history.record.get('Name');  //WS Name here';
@@ -211,18 +211,18 @@ Ext.define('CustomApp', {
                         // 2.) Cycle thru the revisions and make a running count (y-axis - series)
                         var count_hash = {};
                         var counter = 1; // Allow for Rally's 'Sample' project which never shows up in rev hist.
-                        Ext.Array.each(array_of_days,function(day){
+                            Ext.Array.each(array_of_intervals,function(interval){
                             Ext.Array.each(history.revisions,function(revision){
                                 var revdate = revision.get('CreationDate');
-                                if (revdate > day && revdate < Rally.util.DateTime.add(day,'day',+1)) {
+                                if (revdate > interval && revdate < Rally.util.DateTime.add(interval,granularity,+1)) {
                                     counter++;
-                                } 
+                                }
                             });
-                            count_hash[day] = counter;
+                            count_hash[interval] = counter;
                         });
-                        
+
                         var series_data = [];
-                        Ext.Object.each(count_hash,function(day,value){
+                        Ext.Object.each(count_hash,function(interval,value){
                             series_data.push(value);
                         });
                         series.push({type:'area',name:ws_name,stack:1,data:series_data});
@@ -232,7 +232,7 @@ Ext.define('CustomApp', {
                 // 3.) Make chart
                 
                 this.down('#btn-export').setDisabled(false);
-                this._makeChart(array_of_days,series);
+                this._makeChart(array_of_intervals,series);
                 this.setLoading(false);
             },
             failure: function(error_message){
@@ -246,18 +246,21 @@ Ext.define('CustomApp', {
         var categories = Ext.clone(this.down('#chart-project-growth').chartConfig.xAxis[0].categories);
         var series = Ext.clone(this.down('#chart-project-growth').chartData.series);  
         
-        var x_min = Ext.util.Format.date(this.down('#dt-start').getValue(),'Y-m-d');
-        var x_max = Ext.util.Format.date(this.down('#dt-end').getValue(),'Y-m-d');
+        var x_min = this.down('#dt-start').getValue();
+        var x_max = this.down('#dt-end').getValue();
+
+        this.logger.log('_updateChart',x_min,x_max);
         var x_min_ordinal = 0;
         var x_max_ordinal = categories.length-1;
         
         for (var i=0; i < categories.length; i++){
-            var category_date = Ext.util.Format.date(categories[i],'Y-m-d');
-            if (x_min == category_date){
-                x_min_ordinal = i;
+            var category_date = new Date(categories[i]);
+            if (x_min > category_date){
+                x_min_ordinal = i
             }
-            if (x_max == category_date){
+            if (x_max < category_date){
                 x_max_ordinal = i;
+                i = categories.length;
             }
         }
 
@@ -267,6 +270,7 @@ Ext.define('CustomApp', {
         this.setLoading(false);
     },
     _redrawChart: function(categories,serieses,x_min, x_max){
+        var tickInterval = 1;
         this.down('#display_box').removeAll();
         this.down('#display_box').add({
             xtype:'rallychart',
@@ -283,7 +287,7 @@ Ext.define('CustomApp', {
                 yAxis: [{ title: { text: 'Count' } }],
                 xAxis: [{
                     tickmarkPlacement: 'on',
-                    tickInterval: 56,
+                    tickInterval: tickInterval,
                     categories:  categories,
                     labels: {
                         align: 'left',
@@ -311,12 +315,7 @@ Ext.define('CustomApp', {
     _makeChart: function(categories,serieses){
         this.logger.log('_makeChart');
 
-        var formatted_categories = [];
-        for (var i=0; i < categories.length; i++){
-            var category_date = Ext.util.Format.date(categories[i],'Y-m-d');
-            formatted_categories.push(category_date);
-        }
-
+        var formatted_categories = Rally.technicalservices.Toolbox.formatDateBuckets(categories,'Y-m-d');
         var x_min = 0;
         var x_max = formatted_categories.length-1;
 
@@ -348,7 +347,7 @@ Ext.define('CustomApp', {
                 end_index = i
             }
         }
-        console.log(start_index, end_index);
+
         var text = "Workspace,";
         for (var i = start_index;  i <= end_index; i++){
             text += categories[i] + ',';
