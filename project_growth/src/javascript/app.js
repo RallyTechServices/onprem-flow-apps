@@ -8,7 +8,11 @@ Ext.define('CustomApp', {
         {xtype:'tsinfolink'}
     ],
     EXPORT_FILE_NAME: 'project-growth-export.csv',
-    MAX_WORKSPACES: 500, 
+    MAX_WORKSPACES: 500,
+    stateful: true,
+    stateId: 'artifactGrowthAppState', //this.getContext().getScopedStateId('appState'),
+    selectedWorkspaceOids: [],
+    selectedWorkspaces: null,
     launch: function() {
 
         this.fetchWorkspaces().then({
@@ -24,6 +28,28 @@ Ext.define('CustomApp', {
 
 
     },
+    _getSelectedWorkspaceObjects: function(){
+        var selectedWorkspaces = [];
+        var currentWorkspace = null;
+        if (this.selectedWorkspaceOids.length > 0){
+            Ext.each(this.workspaces, function(wksp){
+                if (Ext.Array.contains(this.selectedWorkspaceOids,wksp.get('ObjectID'))){
+                    selectedWorkspaces.push(wksp);
+                }
+                if (wksp.get('ObjectID') == this.getContext().getWorkspace().ObjectID){
+                    currentWorkspace = wksp;
+                }
+            }, this);
+        }
+        this.logger.log('_getSelectedWorkspaceObjects',this.selectedWorkspaceOids, selectedWorkspaces);
+        if (selectedWorkspaces.length > 0) {
+            return selectedWorkspaces;
+        }
+
+        currentWorkspace = currentWorkspace || this._getCurrentWorkspaceRecord();
+        return [currentWorkspace];
+
+    },
     _getCurrentWorkspaceRecord: function(){
         var currentWorkspaceOid = this.getContext().getWorkspace().ObjectID;
         var record = this.workspaces[0];
@@ -35,9 +61,37 @@ Ext.define('CustomApp', {
         });
         return record;
     },
+    /**
+     * Gets the current state of the object. By default this function returns null,
+     * it should be overridden in subclasses to implement methods for getting the state.
+     * @return {Object} The current state
+     */
+    getState: function(){
+        this.logger.log('getState');
+        var workspaceOids = _.map(this.selectedWorkspaces, function(w){
+            return w.ObjectID || w.get('ObjectID');
+        });
+        return{
+            selectedWorkspaceOids: workspaceOids
+        };
+    },
+
+    /**
+     * Applies the state to the object. This should be overridden in subclasses to do
+     * more complex state operations. By default it applies the state properties onto
+     * the current object.
+     * @param {Object} state The state
+     */
+    applyState: function(state){
+        if (state && state.selectedWorkspaceOids && state.selectedWorkspaceOids.length > 0) {
+            this.selectedWorkspaceOids = state.selectedWorkspaceOids;
+            //Ext.apply(this, state);
+        }
+        this.logger.log('applyState', state, this.selectedWorkspaceOids);
+    },
     _initialize: function(workspaces){
         this.workspaces = workspaces;
-        this.selectedWorkspaces = [this._getCurrentWorkspaceRecord()];
+        this.selectedWorkspaces = this._getSelectedWorkspaceObjects();
 
         this.down('#select_box').add({
             xtype: 'rallydatefield',
@@ -102,7 +156,13 @@ Ext.define('CustomApp', {
     },
     _workspacesSelected: function(records){
         this.logger.log('_workspacesSelected', records);
-        this.selectedWorkspaces = records;
+        if (records.length > 0){
+            this.selectedWorkspaces = records;
+        } else {
+            this.selectedWorkspaces = [this._getCurrentWorkspaceRecord()];
+        }
+        //Save selected workspaces
+        this.saveState();
         this._createChart();
     },
     _getEarliestRevisionDate: function(histories){
@@ -363,7 +423,7 @@ Ext.define('CustomApp', {
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
         var promises = [];
-
+        this.logger.log('_getWorkspaceHistories',this.selectedWorkspaces);
         Ext.each(this.selectedWorkspaces, function(workspace){
             var p = function(){
                 return me._getHistoryForRecord(workspace,state_field);
