@@ -8,7 +8,11 @@ Ext.define('CustomApp', {
         {xtype:'tsinfolink'}
     ],
     EXPORT_FILE_NAME: 'project-growth-export.csv',
-    MAX_WORKSPACES: 500, 
+    MAX_WORKSPACES: 500,
+    stateful: true,
+    stateId: 'artifactGrowthAppState', //this.getContext().getScopedStateId('appState'),
+    selectedWorkspaceOids: [],
+    selectedWorkspaces: null,
     launch: function() {
 
         this.fetchWorkspaces().then({
@@ -24,6 +28,28 @@ Ext.define('CustomApp', {
 
 
     },
+    _getSelectedWorkspaceObjects: function(){
+        var selectedWorkspaces = [];
+        var currentWorkspace = null;
+        if (this.selectedWorkspaceOids.length > 0){
+            Ext.each(this.workspaces, function(wksp){
+                if (Ext.Array.contains(this.selectedWorkspaceOids,wksp.get('ObjectID'))){
+                    selectedWorkspaces.push(wksp);
+                }
+                if (wksp.get('ObjectID') == this.getContext().getWorkspace().ObjectID){
+                    currentWorkspace = wksp;
+                }
+            }, this);
+        }
+        this.logger.log('_getSelectedWorkspaceObjects',this.selectedWorkspaceOids, selectedWorkspaces);
+        if (selectedWorkspaces.length > 0) {
+            return selectedWorkspaces;
+        }
+
+        currentWorkspace = currentWorkspace || this._getCurrentWorkspaceRecord();
+        return [currentWorkspace];
+
+    },
     _getCurrentWorkspaceRecord: function(){
         var currentWorkspaceOid = this.getContext().getWorkspace().ObjectID;
         var record = this.workspaces[0];
@@ -35,16 +61,44 @@ Ext.define('CustomApp', {
         });
         return record;
     },
+    /**
+     * Gets the current state of the object. By default this function returns null,
+     * it should be overridden in subclasses to implement methods for getting the state.
+     * @return {Object} The current state
+     */
+    getState: function(){
+        this.logger.log('getState');
+        var workspaceOids = _.map(this.selectedWorkspaces, function(w){
+            return w.ObjectID || w.get('ObjectID');
+        });
+        return{
+            selectedWorkspaceOids: workspaceOids
+        };
+    },
+
+    /**
+     * Applies the state to the object. This should be overridden in subclasses to do
+     * more complex state operations. By default it applies the state properties onto
+     * the current object.
+     * @param {Object} state The state
+     */
+    applyState: function(state){
+        if (state && state.selectedWorkspaceOids && state.selectedWorkspaceOids.length > 0) {
+            this.selectedWorkspaceOids = state.selectedWorkspaceOids;
+            //Ext.apply(this, state);
+        }
+        this.logger.log('applyState', state, this.selectedWorkspaceOids);
+    },
     _initialize: function(workspaces){
         this.workspaces = workspaces;
-        this.selectedWorkspaces = [this._getCurrentWorkspaceRecord()];
+        this.selectedWorkspaces = this._getSelectedWorkspaceObjects();
 
         this.down('#select_box').add({
             xtype: 'rallydatefield',
             itemId: 'dt-start',
             labelAlign: 'right',
             fieldLabel: 'Start Date',
-            margin: 10,
+            margin: 10
         });
         this.down('#select_box').add({
             xtype: 'rallydatefield',
@@ -66,7 +120,7 @@ Ext.define('CustomApp', {
 
         this.down('#select_box').add({
             xtype: 'rallybutton',
-            text: 'Update',
+            text: 'Run',
             margin: 10,
             listeners: {
                 scope: this,
@@ -102,7 +156,13 @@ Ext.define('CustomApp', {
     },
     _workspacesSelected: function(records){
         this.logger.log('_workspacesSelected', records);
-        this.selectedWorkspaces = records;
+        if (records.length > 0){
+            this.selectedWorkspaces = records;
+        } else {
+            this.selectedWorkspaces = [this._getCurrentWorkspaceRecord()];
+        }
+        //Save selected workspaces
+        this.saveState();
         this._createChart();
     },
     _getEarliestRevisionDate: function(histories){
@@ -125,25 +185,25 @@ Ext.define('CustomApp', {
         this.logger.log('_createChart');  
         this.setLoading('Calculating...');
         this.down('#btn-export').setDisabled(true);
-        
+        var granularity = "month";
+
         this._getWorkspaceHistories('projects').then({
             scope: this,
             success: function(histories){
-                
-                this.logger.log("Found histories:", histories);
-                
+
                 // 1.) Get an array of all the days between the first rev-hist and today (x-axis - categories)).
                 var first_date = this._getEarliestRevisionDate(histories);
-                this.logger.log("First revision-history date = ",first_date);
-                var array_of_days = Rally.technicalservices.util.Utilities.arrayOfDaysBetween(new Date(first_date),new Date(),false);
-                this.logger.log("Total days covered", array_of_days);
+                this.logger.log("Found histories:", histories, first_date,this.down('#dt-start'));
                 
                 this.down('#dt-start').setMinValue(first_date);
                 this.down('#dt-start').setValue(first_date);
-                this.down('#dt-end').setMaxValue(new Date());
-                this.down('#dt-end').setValue(new Date());
+
+                this.logger.log("First revision-history date = ",first_date);
+
+                var array_of_intervals = Rally.technicalservices.Toolbox.getDateBuckets(new Date(first_date), new Date(), granularity);
+                this.logger.log("Total days covered", array_of_intervals);
                 
-                var series = []; 
+                var series = [];
                 Ext.each(histories, function(history){
                     if (history.record && history.revisions && history.revisions.length > 0){
                         var ws_name = history.record.get('Name');  //WS Name here';
@@ -151,18 +211,18 @@ Ext.define('CustomApp', {
                         // 2.) Cycle thru the revisions and make a running count (y-axis - series)
                         var count_hash = {};
                         var counter = 1; // Allow for Rally's 'Sample' project which never shows up in rev hist.
-                        Ext.Array.each(array_of_days,function(day){
+                            Ext.Array.each(array_of_intervals,function(interval){
                             Ext.Array.each(history.revisions,function(revision){
                                 var revdate = revision.get('CreationDate');
-                                if (revdate > day && revdate < Rally.util.DateTime.add(day,'day',+1)) {
+                                if (revdate > interval && revdate < Rally.util.DateTime.add(interval,granularity,+1)) {
                                     counter++;
-                                } 
+                                }
                             });
-                            count_hash[day] = counter;
+                            count_hash[interval] = counter;
                         });
-                        
+
                         var series_data = [];
-                        Ext.Object.each(count_hash,function(day,value){
+                        Ext.Object.each(count_hash,function(interval,value){
                             series_data.push(value);
                         });
                         series.push({type:'area',name:ws_name,stack:1,data:series_data});
@@ -172,7 +232,7 @@ Ext.define('CustomApp', {
                 // 3.) Make chart
                 
                 this.down('#btn-export').setDisabled(false);
-                this._makeChart(array_of_days,series);
+                this._makeChart(array_of_intervals,series);
                 this.setLoading(false);
             },
             failure: function(error_message){
@@ -186,18 +246,21 @@ Ext.define('CustomApp', {
         var categories = Ext.clone(this.down('#chart-project-growth').chartConfig.xAxis[0].categories);
         var series = Ext.clone(this.down('#chart-project-growth').chartData.series);  
         
-        var x_min = Ext.util.Format.date(this.down('#dt-start').getValue(),'Y-m-d');
-        var x_max = Ext.util.Format.date(this.down('#dt-end').getValue(),'Y-m-d');
+        var x_min = this.down('#dt-start').getValue();
+        var x_max = this.down('#dt-end').getValue();
+
+        this.logger.log('_updateChart',x_min,x_max);
         var x_min_ordinal = 0;
         var x_max_ordinal = categories.length-1;
         
         for (var i=0; i < categories.length; i++){
-            var category_date = Ext.util.Format.date(categories[i],'Y-m-d');
-            if (x_min == category_date){
-                x_min_ordinal = i;
+            var category_date = new Date(categories[i]);
+            if (x_min > category_date){
+                x_min_ordinal = i
             }
-            if (x_max == category_date){
+            if (x_max < category_date){
                 x_max_ordinal = i;
+                i = categories.length;
             }
         }
 
@@ -207,6 +270,7 @@ Ext.define('CustomApp', {
         this.setLoading(false);
     },
     _redrawChart: function(categories,serieses,x_min, x_max){
+        var tickInterval = 1;
         this.down('#display_box').removeAll();
         this.down('#display_box').add({
             xtype:'rallychart',
@@ -223,7 +287,7 @@ Ext.define('CustomApp', {
                 yAxis: [{ title: { text: 'Count' } }],
                 xAxis: [{
                     tickmarkPlacement: 'on',
-                    tickInterval: 56,
+                    tickInterval: tickInterval,
                     categories:  categories,
                     labels: {
                         align: 'left',
@@ -251,12 +315,7 @@ Ext.define('CustomApp', {
     _makeChart: function(categories,serieses){
         this.logger.log('_makeChart');
 
-        var formatted_categories = [];
-        for (var i=0; i < categories.length; i++){
-            var category_date = Ext.util.Format.date(categories[i],'Y-m-d');
-            formatted_categories.push(category_date);
-        }
-
+        var formatted_categories = Rally.technicalservices.Toolbox.formatDateBuckets(categories,'Y-m-d');
         var x_min = 0;
         var x_max = formatted_categories.length-1;
 
@@ -288,7 +347,7 @@ Ext.define('CustomApp', {
                 end_index = i
             }
         }
-        console.log(start_index, end_index);
+
         var text = "Workspace,";
         for (var i = start_index;  i <= end_index; i++){
             text += categories[i] + ',';
@@ -311,7 +370,7 @@ Ext.define('CustomApp', {
         
         var file_name = Rally.util.DateTime.format(new Date(),'yyyy-MM-dd_hh-mm-ss-') + this.EXPORT_FILE_NAME;
         this.logger.log('_exportData', text, file_name);
-        Rally.technicalservices.FileUtilities.saveTextAsFile(text,file_name);
+        Rally.technicalservices.FileUtilities.saveCSVToFile(text,file_name);
     },
     _getWorkspaces: function(state_field){
         var deferred = Ext.create('Deft.Deferred');
@@ -363,7 +422,7 @@ Ext.define('CustomApp', {
         var deferred = Ext.create('Deft.Deferred');
         var me = this;
         var promises = [];
-
+        this.logger.log('_getWorkspaceHistories',this.selectedWorkspaces);
         Ext.each(this.selectedWorkspaces, function(workspace){
             var p = function(){
                 return me._getHistoryForRecord(workspace,state_field);
