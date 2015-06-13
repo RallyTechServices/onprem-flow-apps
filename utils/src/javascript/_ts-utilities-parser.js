@@ -14,6 +14,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * new_value: {String} the value the field changed into
      */
     findValuesForField: function(field_name, text_string){
+        console.log('findValuesForField',field_name,text_string);
         var description = text_string;
         var new_value = null;
         var original_value = null;
@@ -54,7 +55,68 @@ Ext.define('Rally.technicalservices.util.Parser', {
             original_value: original_value
         };
     },
-    
+    /**
+     * given an array of revision objects, find the first revision that changed to the state and the last
+     * revision that changed from the state
+     *
+     * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
+     */
+    findStateRevisions: function(revisions, field_name, state){
+        var matching_revisions = [];
+        var start_revision = null;
+        var end_revision = null;
+
+        Ext.Array.each( revisions, function(revision){
+            var values = this.findValuesForField(field_name, revision.get('Description'));
+            console.log(values);
+            if ( !start_revision && values.new_value == state ) {
+                start_revision = revision;
+            }
+
+            if ( values.original_value == state ) {
+                end_revision = revision;
+            }
+        },this);
+
+        console.log('start, end', start_revision, end_revision);
+        //if ( ! start_revision || ! end_revision ) {
+        //    // maybe we skipped the start
+        //    if ( state_array ) {
+        //        start_index = Ext.Array.indexOf(state_array, start_state);
+        //        end_index = Ext.Array.indexOf(state_array, end_state);
+        //
+        //        Ext.Array.each( revision_array, function(revision) {
+        //            var values = this.findValuesForField(field_name, revision.get('Description'));
+        //            var revision_index = Ext.Array.indexOf(state_array, values.new_value);
+        //
+        //            if ( !start_revision &&  revision_index > start_index && revision_index < end_index ) {
+        //                start_revision = revision;
+        //            }
+        //            if ( !end_revision &&  revision_index > end_index ) {
+        //                end_revision = revision;
+        //            }
+        //        },this);
+        //    }
+        //}
+
+        if ( end_revision && ! start_revision) {
+            // we got to the end without seeing the start.
+
+            // if the first rev is the original then let's assume it was our start
+            if ( revisions[0].get('Description') == "Original revision" ){
+                start_revision = revisions[0];
+            }
+        }
+
+        if ( start_revision && end_revision ) {
+            matching_revisions = [ start_revision, end_revision];
+        }
+
+        console.log('matching', matching_revisions)
+        return matching_revisions;
+
+    },
+
     /**
      * given an array of revision objects, find the first revision that changed to the first state and the last
      * revision that changed to the last state
