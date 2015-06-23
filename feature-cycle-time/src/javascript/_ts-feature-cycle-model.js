@@ -2,11 +2,11 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
     singleton: true,
 
     getCycleTimeEndDateField: function(s){
-        return {dataIndex: s + '_end_date', text: s + ' End Date'};
+        return {dataIndex: s + '_end_date', text: 'End'};
     },
 
     getCycleTimeStartDateField: function(s){
-        return {dataIndex: s + '_start_date', text: s + ' Start Date'};
+        return {dataIndex: s + '_start_date', text: 'Start'};
     },
 
     getCycleTimeField: function(s){
@@ -65,29 +65,21 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 }
 
                 this.set('_revisions', revisions);
+                var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates(revisions, this.stateField, this.skipWeekends);
 
-                _.each(this.stateList, function(state){
-                    if (state.length > 0) {
+
+
+                _.each(time_in_states, function(obj, state){
+                    if (state.length > 0 && Ext.Array.contains(this.stateList, state)) {
                         var state_cycle_field_name = Rally.technicalservices.ModelBuilder.getCycleTimeField(state).dataIndex,
                             state_cycle_start_name = Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(state).dataIndex,
-                            state_cycle_end_name = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(state).dataIndex,
-                            found_revisions = Rally.technicalservices.util.Parser.findStateRevisions(revisions, this.stateField, state);
+                            state_cycle_end_name = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(state).dataIndex;
 
-                        console.log("Found pair of revisions:", found_revisions);
-
-                        if (found_revisions.length == 2) {
-                            var start_date = found_revisions[0].get('CreationDate');
-                            var end_date = found_revisions[1].get('CreationDate');
-
-                            var cycle_time = Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends);
-                            console.log("do math on ", start_date, end_date, cycle_time);
-                            this.set(state_cycle_start_name, start_date);
-                            this.set(state_cycle_end_name, end_date);
-                            this.set(state_cycle_field_name, cycle_time);
-                        }
+                        this.set(state_cycle_start_name, obj.startDate || null);
+                        this.set(state_cycle_end_name, obj.endDate || null);
+                        this.set(state_cycle_field_name, obj.timeInState || -1);
                     }
-                },this);
-
+                }, this);
             },
             _getHistory: function(){
                 var deferred = Ext.create('Deft.Deferred');

@@ -43,9 +43,11 @@ Ext.define("feature-cycle-time", {
         });
 
         var columnCfgs = [{
-            text: 'FormattedID',
-            dataIndex: 'FormattedID'
+            text: 'Formatted ID',
+            dataIndex: 'FormattedID',
+            _csvIgnoreRender: true
         }];
+
         _.each(allowedValues, function(v){
             if (v.length > 0 ) {
                 var field = Rally.technicalservices.ModelBuilder.getCycleTimeField(v);
@@ -72,10 +74,12 @@ Ext.define("feature-cycle-time", {
             xtype: 'rallygrid',
             itemId: 'grid-cycletime',
             store: store,
+            showRowActionsColumn: false,
             columnCfgs: columnCfgs
         });
     },
     _cycleTimeFieldRenderer: function(v, m, r){
+        m.tdCls = 'line-column';
         if (v >= 0){
             return v;
         }
@@ -85,7 +89,10 @@ Ext.define("feature-cycle-time", {
             return Rally.util.DateTime.formatWithDefault(Rally.util.DateTime.fromIsoString(v));
         }
     },
-    _export: function(){},
+    _export: function(){
+        var csv = Rally.technicalservices.FileUtilities.getCSVFromGrid(this.down('#grid-cycletime'));
+        Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+    },
     _initApp: function(){
 
         Rally.data.ModelFactory.getModel({

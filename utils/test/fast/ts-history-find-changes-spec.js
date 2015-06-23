@@ -120,6 +120,39 @@ describe("Given arrays of revisions",function() {
                 expect( cumulative_flow[first_friday] ).toEqual({ 'Defined': [item3], 'In-Progress': [item2],'Accepted': [item1] });
                 
              });
+
+
+             /*
+              * Given an array of revisions and a field name that holds the state,
+              * find all the state transitions and return a hash of objects that contain the following:
+              * key:  StateValue
+              * values: TimeInState, StartDate, EndDate
+              */
+             it ('should find the time that each item is in each state', function(){
+                 var rev0 = Ext.create('mockRevision',{ ObjectID: 1, CreationDate: first_saturday,
+                     Description: "Original revision" });
+                 var rev1 = Ext.create('mockRevision',{ ObjectID: 2, CreationDate: first_sunday,
+                     Description: "RANK moved up, SCHEDULE STATE changed from [Defined] to [In-Progress]" });
+                 var rev2 = Ext.create('mockRevision',{ ObjectID: 3, CreationDate: first_monday,
+                     Description: "RANK moved down, SCHEDULE STATE changed from [In-Progress] to [Completed]" });
+                 var rev3 = Ext.create('mockRevision',{ ObjectID: 4, CreationDate: first_tuesday,
+                     Description: "RANK moved down, SCHEDULE STATE changed from [Completed] to [Accepted]" });
+                 var rev4 = Ext.create('mockRevision',{ ObjectID: 5, CreationDate: first_wednesday,
+                     Description: "RANK moved up" });
+
+                 var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates([rev0,rev1,rev2,rev3,rev4],'Schedule State');
+                 expect( time_in_states['Defined'].timeInState).toEqual(Rally.technicalservices.util.Utilities.daysBetween(first_sunday, first_saturday,false));
+                 expect( time_in_states['Defined'].startDate).toEqual(first_saturday);
+                 expect( time_in_states['Defined'].endDate).toEqual(first_sunday);
+
+                 expect( time_in_states['In-Progress'].timeInState).toEqual(Rally.util.DateTime.getDifference(first_monday, first_sunday,'day'));
+                 expect( time_in_states['In-Progress'].startDate).toEqual(first_sunday);
+                 expect( time_in_states['In-Progress'].endDate).toEqual(first_monday);
+
+                 expect( time_in_states['Completed'].timeInState).toEqual(Rally.util.DateTime.getDifference(first_tuesday, first_monday,'day'));
+                 expect( time_in_states['Accepted'].timeInState).toEqual(Rally.util.DateTime.getDifference(new Date(), first_tuesday,'day'));
+
+             });
          });
     });
 });

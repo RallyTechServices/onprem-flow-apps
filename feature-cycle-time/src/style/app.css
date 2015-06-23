@@ -15,3 +15,9 @@
     margin-right: 5px;
     cursor: pointer;
 }
+.line-column {
+    border-style: solid;
+    border-left-width: 1px;
+    border-left-color: #e0e0e0;
+    text-align: center;
+}

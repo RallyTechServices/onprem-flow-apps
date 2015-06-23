@@ -66,7 +66,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
         var start_revision = null;
         var end_revision = null;
 
-        Ext.Array.each( revisions, function(revision){
+        Ext.Array.each(revisions, function(revision){
             var values = this.findValuesForField(field_name, revision.get('Description'));
             console.log(values);
             if ( !start_revision && values.new_value == state ) {
@@ -77,27 +77,6 @@ Ext.define('Rally.technicalservices.util.Parser', {
                 end_revision = revision;
             }
         },this);
-
-        console.log('start, end', start_revision, end_revision);
-        //if ( ! start_revision || ! end_revision ) {
-        //    // maybe we skipped the start
-        //    if ( state_array ) {
-        //        start_index = Ext.Array.indexOf(state_array, start_state);
-        //        end_index = Ext.Array.indexOf(state_array, end_state);
-        //
-        //        Ext.Array.each( revision_array, function(revision) {
-        //            var values = this.findValuesForField(field_name, revision.get('Description'));
-        //            var revision_index = Ext.Array.indexOf(state_array, values.new_value);
-        //
-        //            if ( !start_revision &&  revision_index > start_index && revision_index < end_index ) {
-        //                start_revision = revision;
-        //            }
-        //            if ( !end_revision &&  revision_index > end_index ) {
-        //                end_revision = revision;
-        //            }
-        //        },this);
-        //    }
-        //}
 
         if ( end_revision && ! start_revision) {
             // we got to the end without seeing the start.
@@ -283,5 +262,39 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         }
         return matches;
+    },
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return a hash of objects that contain the following:
+     * key:  StateValue
+     * values: TimeInState, StartDate, EndDate
+     */
+
+    getTimeInStates: function(revisions, field_name, skipWeekends){
+        var transitions = this.getStateAttainments(revisions, field_name),
+            time_in_states = {},
+            prev_state = null,
+            skipWeekends = skipWeekends || false;
+
+        _.each(transitions, function(t){
+
+            time_in_states[t.state] = {};
+            time_in_states[t.state].startDate = t.change_date;
+            if (prev_state) {
+                time_in_states[prev_state].endDate = t.change_date;
+            }
+            prev_state = t.state;
+        });
+
+        _.each(time_in_states, function(val,key){
+            if (val.startDate && val.endDate){
+                time_in_states[key].timeInState = Rally.technicalservices.util.Utilities.daysBetween(val.endDate, val.startDate, skipWeekends);
+            } else if (!val.endDate) {
+                time_in_states[key].timeInState = Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.startDate, skipWeekends);
+            }
+
+        });
+
+        return time_in_states;
     }
 });

@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jun 12 2015 20:10:37 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jun 23 2015 07:16:46 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jun 12 2015 20:10:37 GMT-0600 (MDT)";
-        var CHECKSUM = 19590782371;
+        var APP_BUILD_DATE = "Tue Jun 23 2015 07:16:46 GMT-0600 (MDT)";
+        var CHECKSUM = 57243352134;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -15,6 +15,613 @@
     <script type="text/javascript">
         Rally.onReady(function() {
              
+/* Blob.js
+ * A Blob implementation.
+ * 2014-05-31
+ *
+ * By Eli Grey, http://eligrey.com
+ * By Devin Samarin, https://github.com/eboyjr
+ * License: X11/MIT
+ *   See https://github.com/eligrey/Blob.js/blob/master/LICENSE.md
+ */
+
+/*global self, unescape */
+/*jslint bitwise: true, regexp: true, confusion: true, es5: true, vars: true, white: true,
+ plusplus: true */
+
+/*! @source http://purl.eligrey.com/github/Blob.js/blob/master/Blob.js */
+
+(function (view) {
+    "use strict";
+
+    view.URL = view.URL || view.webkitURL;
+
+    if (view.Blob && view.URL) {
+        try {
+            new Blob;
+            return;
+        } catch (e) {}
+    }
+
+    // Internally we use a BlobBuilder implementation to base Blob off of
+    // in order to support older browsers that only have BlobBuilder
+    var BlobBuilder = view.BlobBuilder || view.WebKitBlobBuilder || view.MozBlobBuilder || (function(view) {
+            var
+                get_class = function(object) {
+                    return Object.prototype.toString.call(object).match(/^\[object\s(.*)\]$/)[1];
+                }
+                , FakeBlobBuilder = function BlobBuilder() {
+                    this.data = [];
+                }
+                , FakeBlob = function Blob(data, type, encoding) {
+                    this.data = data;
+                    this.size = data.length;
+                    this.type = type;
+                    this.encoding = encoding;
+                }
+                , FBB_proto = FakeBlobBuilder.prototype
+                , FB_proto = FakeBlob.prototype
+                , FileReaderSync = view.FileReaderSync
+                , FileException = function(type) {
+                    this.code = this[this.name = type];
+                }
+                , file_ex_codes = (
+                "NOT_FOUND_ERR SECURITY_ERR ABORT_ERR NOT_READABLE_ERR ENCODING_ERR "
+                + "NO_MODIFICATION_ALLOWED_ERR INVALID_STATE_ERR SYNTAX_ERR"
+                ).split(" ")
+                , file_ex_code = file_ex_codes.length
+                , real_URL = view.URL || view.webkitURL || view
+                , real_create_object_URL = real_URL.createObjectURL
+                , real_revoke_object_URL = real_URL.revokeObjectURL
+                , URL = real_URL
+                , btoa = view.btoa
+                , atob = view.atob
+
+                , ArrayBuffer = view.ArrayBuffer
+                , Uint8Array = view.Uint8Array
+                ;
+            FakeBlob.fake = FB_proto.fake = true;
+            while (file_ex_code--) {
+                FileException.prototype[file_ex_codes[file_ex_code]] = file_ex_code + 1;
+            }
+            if (!real_URL.createObjectURL) {
+                URL = view.URL = {};
+            }
+            URL.createObjectURL = function(blob) {
+                var
+                    type = blob.type
+                    , data_URI_header
+                    ;
+                if (type === null) {
+                    type = "application/octet-stream";
+                }
+                if (blob instanceof FakeBlob) {
+                    data_URI_header = "data:" + type;
+                    if (blob.encoding === "base64") {
+                        return data_URI_header + ";base64," + blob.data;
+                    } else if (blob.encoding === "URI") {
+                        return data_URI_header + "," + decodeURIComponent(blob.data);
+                    } if (btoa) {
+                        return data_URI_header + ";base64," + btoa(blob.data);
+                    } else {
+                        return data_URI_header + "," + encodeURIComponent(blob.data);
+                    }
+                } else if (real_create_object_URL) {
+                    return real_create_object_URL.call(real_URL, blob);
+                }
+            };
+            URL.revokeObjectURL = function(object_URL) {
+                if (object_URL.substring(0, 5) !== "data:" && real_revoke_object_URL) {
+                    real_revoke_object_URL.call(real_URL, object_URL);
+                }
+            };
+            FBB_proto.append = function(data/*, endings*/) {
+                var bb = this.data;
+                // decode data to a binary string
+                if (Uint8Array && (data instanceof ArrayBuffer || data instanceof Uint8Array)) {
+                    var
+                        str = ""
+                        , buf = new Uint8Array(data)
+                        , i = 0
+                        , buf_len = buf.length
+                        ;
+                    for (; i < buf_len; i++) {
+                        str += String.fromCharCode(buf[i]);
+                    }
+                    bb.push(str);
+                } else if (get_class(data) === "Blob" || get_class(data) === "File") {
+                    if (FileReaderSync) {
+                        var fr = new FileReaderSync;
+                        bb.push(fr.readAsBinaryString(data));
+                    } else {
+                        // async FileReader won't work as BlobBuilder is sync
+                        throw new FileException("NOT_READABLE_ERR");
+                    }
+                } else if (data instanceof FakeBlob) {
+                    if (data.encoding === "base64" && atob) {
+                        bb.push(atob(data.data));
+                    } else if (data.encoding === "URI") {
+                        bb.push(decodeURIComponent(data.data));
+                    } else if (data.encoding === "raw") {
+                        bb.push(data.data);
+                    }
+                } else {
+                    if (typeof data !== "string") {
+                        data += ""; // convert unsupported types to strings
+                    }
+                    // decode UTF-16 to binary string
+                    bb.push(unescape(encodeURIComponent(data)));
+                }
+            };
+            FBB_proto.getBlob = function(type) {
+                if (!arguments.length) {
+                    type = null;
+                }
+                return new FakeBlob(this.data.join(""), type, "raw");
+            };
+            FBB_proto.toString = function() {
+                return "[object BlobBuilder]";
+            };
+            FB_proto.slice = function(start, end, type) {
+                var args = arguments.length;
+                if (args < 3) {
+                    type = null;
+                }
+                return new FakeBlob(
+                    this.data.slice(start, args > 1 ? end : this.data.length)
+                    , type
+                    , this.encoding
+                );
+            };
+            FB_proto.toString = function() {
+                return "[object Blob]";
+            };
+            FB_proto.close = function() {
+                this.size = 0;
+                delete this.data;
+            };
+            return FakeBlobBuilder;
+        }(view));
+
+    view.Blob = function Blob(blobParts, options) {
+        var type = options ? (options.type || "") : "";
+        var builder = new BlobBuilder();
+        if (blobParts) {
+            for (var i = 0, len = blobParts.length; i < len; i++) {
+                builder.append(blobParts[i]);
+            }
+        }
+        return builder.getBlob(type);
+    };
+}(typeof self !== "undefined" && self || typeof window !== "undefined" && window || this.content || this));
+
+/* FileSaver.js
+ *  A saveAs() FileSaver implementation.
+ *  2014-05-27
+ *
+ *  By Eli Grey, http://eligrey.com
+ *  License: X11/MIT
+ *    See https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md
+ */
+
+/*global self */
+/*jslint bitwise: true, indent: 4, laxbreak: true, laxcomma: true, smarttabs: true, plusplus: true */
+
+/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
+
+var saveAs = saveAs
+        // IE 10+ (native saveAs)
+    || (typeof navigator !== "undefined" &&
+    navigator.msSaveOrOpenBlob && navigator.msSaveOrOpenBlob.bind(navigator))
+        // Everyone else
+    || (function(view) {
+        "use strict";
+        // IE <10 is explicitly unsupported
+        if (typeof navigator !== "undefined" &&
+            /MSIE [1-9]\./.test(navigator.userAgent)) {
+            return;
+        }
+        var
+            doc = view.document
+        // only get URL when necessary in case Blob.js hasn't overridden it yet
+            , get_URL = function() {
+                return view.URL || view.webkitURL || view;
+            }
+            , save_link = doc.createElementNS("http://www.w3.org/1999/xhtml", "a")
+            , can_use_save_link = !view.externalHost && "download" in save_link
+            , click = function(node) {
+                var event = doc.createEvent("MouseEvents");
+                event.initMouseEvent(
+                    "click", true, false, view, 0, 0, 0, 0, 0
+                    , false, false, false, false, 0, null
+                );
+                node.dispatchEvent(event);
+            }
+            , webkit_req_fs = view.webkitRequestFileSystem
+            , req_fs = view.requestFileSystem || webkit_req_fs || view.mozRequestFileSystem
+            , throw_outside = function(ex) {
+                (view.setImmediate || view.setTimeout)(function() {
+                    throw ex;
+                }, 0);
+            }
+            , force_saveable_type = "application/octet-stream"
+            , fs_min_size = 0
+            , deletion_queue = []
+            , process_deletion_queue = function() {
+                var i = deletion_queue.length;
+                while (i--) {
+                    var file = deletion_queue[i];
+                    if (typeof file === "string") { // file is an object URL
+                        get_URL().revokeObjectURL(file);
+                    } else { // file is a File
+                        file.remove();
+                    }
+                }
+                deletion_queue.length = 0; // clear queue
+            }
+            , dispatch = function(filesaver, event_types, event) {
+                event_types = [].concat(event_types);
+                var i = event_types.length;
+                while (i--) {
+                    var listener = filesaver["on" + event_types[i]];
+                    if (typeof listener === "function") {
+                        try {
+                            listener.call(filesaver, event || filesaver);
+                        } catch (ex) {
+                            throw_outside(ex);
+                        }
+                    }
+                }
+            }
+            , FileSaver = function(blob, name) {
+                // First try a.download, then web filesystem, then object URLs
+                var
+                    filesaver = this
+                    , type = blob.type
+                    , blob_changed = false
+                    , object_url
+                    , target_view
+                    , get_object_url = function() {
+                        var object_url = get_URL().createObjectURL(blob);
+                        deletion_queue.push(object_url);
+                        return object_url;
+                    }
+                    , dispatch_all = function() {
+                        dispatch(filesaver, "writestart progress write writeend".split(" "));
+                    }
+                // on any filesys errors revert to saving with object URLs
+                    , fs_error = function() {
+                        // don't create more object URLs than needed
+                        if (blob_changed || !object_url) {
+                            object_url = get_object_url(blob);
+                        }
+                        if (target_view) {
+                            target_view.location.href = object_url;
+                        } else {
+                            window.open(object_url, "_blank");
+                        }
+                        filesaver.readyState = filesaver.DONE;
+                        dispatch_all();
+                    }
+                    , abortable = function(func) {
+                        return function() {
+                            if (filesaver.readyState !== filesaver.DONE) {
+                                return func.apply(this, arguments);
+                            }
+                        };
+                    }
+                    , create_if_not_found = {create: true, exclusive: false}
+                    , slice
+                    ;
+                filesaver.readyState = filesaver.INIT;
+                if (!name) {
+                    name = "download";
+                }
+                if (can_use_save_link) {
+                    object_url = get_object_url(blob);
+                    save_link.href = object_url;
+                    save_link.download = name;
+                    click(save_link);
+                    filesaver.readyState = filesaver.DONE;
+                    dispatch_all();
+                    return;
+                }
+                // Object and web filesystem URLs have a problem saving in Google Chrome when
+                // viewed in a tab, so I force save with application/octet-stream
+                // http://code.google.com/p/chromium/issues/detail?id=91158
+                if (view.chrome && type && type !== force_saveable_type) {
+                    slice = blob.slice || blob.webkitSlice;
+                    blob = slice.call(blob, 0, blob.size, force_saveable_type);
+                    blob_changed = true;
+                }
+                // Since I can't be sure that the guessed media type will trigger a download
+                // in WebKit, I append .download to the filename.
+                // https://bugs.webkit.org/show_bug.cgi?id=65440
+                if (webkit_req_fs && name !== "download") {
+                    name += ".download";
+                }
+                if (type === force_saveable_type || webkit_req_fs) {
+                    target_view = view;
+                }
+                if (!req_fs) {
+                    fs_error();
+                    return;
+                }
+                fs_min_size += blob.size;
+                req_fs(view.TEMPORARY, fs_min_size, abortable(function(fs) {
+                    fs.root.getDirectory("saved", create_if_not_found, abortable(function(dir) {
+                        var save = function() {
+                            dir.getFile(name, create_if_not_found, abortable(function(file) {
+                                file.createWriter(abortable(function(writer) {
+                                    writer.onwriteend = function(event) {
+                                        target_view.location.href = file.toURL();
+                                        deletion_queue.push(file);
+                                        filesaver.readyState = filesaver.DONE;
+                                        dispatch(filesaver, "writeend", event);
+                                    };
+                                    writer.onerror = function() {
+                                        var error = writer.error;
+                                        if (error.code !== error.ABORT_ERR) {
+                                            fs_error();
+                                        }
+                                    };
+                                    "writestart progress write abort".split(" ").forEach(function(event) {
+                                        writer["on" + event] = filesaver["on" + event];
+                                    });
+                                    writer.write(blob);
+                                    filesaver.abort = function() {
+                                        writer.abort();
+                                        filesaver.readyState = filesaver.DONE;
+                                    };
+                                    filesaver.readyState = filesaver.WRITING;
+                                }), fs_error);
+                            }), fs_error);
+                        };
+                        dir.getFile(name, {create: false}, abortable(function(file) {
+                            // delete file if it already exists
+                            file.remove();
+                            save();
+                        }), abortable(function(ex) {
+                            if (ex.code === ex.NOT_FOUND_ERR) {
+                                save();
+                            } else {
+                                fs_error();
+                            }
+                        }));
+                    }), fs_error);
+                }), fs_error);
+            }
+            , FS_proto = FileSaver.prototype
+            , saveAs = function(blob, name) {
+                return new FileSaver(blob, name);
+            }
+            ;
+        FS_proto.abort = function() {
+            var filesaver = this;
+            filesaver.readyState = filesaver.DONE;
+            dispatch(filesaver, "abort");
+        };
+        FS_proto.readyState = FS_proto.INIT = 0;
+        FS_proto.WRITING = 1;
+        FS_proto.DONE = 2;
+
+        FS_proto.error =
+            FS_proto.onwritestart =
+                FS_proto.onprogress =
+                    FS_proto.onwrite =
+                        FS_proto.onabort =
+                            FS_proto.onerror =
+                                FS_proto.onwriteend =
+                                    null;
+
+        view.addEventListener("unload", process_deletion_queue, false);
+        saveAs.unload = function() {
+            process_deletion_queue();
+            view.removeEventListener("unload", process_deletion_queue, false);
+        };
+        return saveAs;
+    }(
+        typeof self !== "undefined" && self
+        || typeof window !== "undefined" && window
+        || this.content
+    ));
+// `self` is undefined in Firefox for Android content script context
+// while `this` is nsIContentFrameMessageManager
+// with an attribute `content` that corresponds to the window
+
+if (typeof module !== "undefined" && module !== null) {
+    module.exports = saveAs;
+} else if ((typeof define !== "undefined" && define !== null) && (define.amd != null)) {
+    define([], function() {
+        return saveAs;
+    });
+}
+
+Ext.define('Rally.technicalservices.FileUtilities', {
+    singleton: true,
+
+    saveHTMLToFile:function(html,file_name,type_object){
+        if (type_object == undefined){
+            type_object = {type:'text/html;charset=utf-8'};
+        }
+        var blob = new Blob([html],type_object);
+        saveAs(blob,file_name);
+    },
+    saveAs:function(text,file_name,type_object){
+        if (type_object == undefined){
+            type_object = {type:'text/plain'};
+        }
+        var blob = new Blob([text],type_object);
+        saveAs(blob,file_name);
+    },
+    saveTextAsFile: function(textToWrite, fileName)
+    {
+        var textFileAsBlob = new Blob([textToWrite], {type:'text/plain'});
+        var fileNameToSaveAs = fileName;
+
+        if (this.detectIE() >= 10){
+            console.log(window.navigator);
+            window.navigator.msSaveBlob(textFileAsBlob, fileNameToSaveAs);
+        } else {
+
+            var downloadLink = document.createElement("a");
+            downloadLink.download = fileNameToSaveAs;
+            downloadLink.innerHTML = "Download File";
+            if (window.webkitURL != null)
+            {
+                // Chrome allows the link to be clicked
+                // without actually adding it to the DOM.
+                downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+            }
+            else
+            {
+                // Firefox requires the link to be added to the DOM
+                // before it can be clicked.
+                downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+                downloadLink.onclick = this.destroyClickedElement;
+                downloadLink.style.display = "none";
+                document.body.appendChild(downloadLink);
+            }
+            downloadLink.click();
+        }
+    },
+    destroyClickedElement: function(event)
+    {
+        document.body.removeChild(event.target);
+    },
+    convertDataArrayToCSVText: function(data_array, requestedFieldHash){
+
+        var text = '';
+        Ext.each(Object.keys(requestedFieldHash), function(key){
+            text += requestedFieldHash[key] + ',';
+        });
+        text = text.replace(/,$/,'\n');
+
+        Ext.each(data_array, function(d){
+            Ext.each(Object.keys(requestedFieldHash), function(key){
+                if (d[key]){
+                    if (typeof d[key] === 'object'){
+                        if (d[key].FormattedID) {
+                            text += Ext.String.format("\"{0}\",",d[key].FormattedID );
+                        } else if (d[key].Name) {
+                            text += Ext.String.format("\"{0}\",",d[key].Name );
+                        } else if (!isNaN(Date.parse(d[key]))){
+                            text += Ext.String.format("\"{0}\",",Rally.util.DateTime.formatWithDefaultDateTime(d[key]));
+                        }else {
+                            text += Ext.String.format("\"{0}\",",d[key].toString());
+                        }
+                    } else {
+                        text += Ext.String.format("\"{0}\",",d[key] );
+                    }
+                } else {
+                    text += ',';
+                }
+            },this);
+            text = text.replace(/,$/,'\n');
+        },this);
+        return text;
+    },
+    scrubStringForXML: function(string){
+        console.log('scrub',string);
+        if (string) {
+            var scrubbed_string = string.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+            return scrubbed_string;
+        }
+        return '';
+    },
+    detectIE: function(){
+        var ua = window.navigator.userAgent;
+
+        var msie = ua.indexOf('MSIE ');
+        if (msie > 0) {
+            // IE 10 or older => return version number
+            return parseInt(ua.substring(msie + 5, ua.indexOf('.', msie)), 10);
+        }
+
+        var trident = ua.indexOf('Trident/');
+        if (trident > 0) {
+            // IE 11 => return version number
+            var rv = ua.indexOf('rv:');
+            return parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
+        }
+
+        var edge = ua.indexOf('Edge/');
+        if (edge > 0) {
+            // IE 12 => return version number
+            return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
+        }
+
+        // other browser
+        return false;
+    },
+    //https://msdn.microsoft.com/en-us/library/ie/hh673542(v=vs.85).aspx
+    getCSVFromGrid:function(grid){
+        var store = grid.getStore();
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        var csv = [];
+
+        Ext.Array.each(columns,function(column){
+            if ( column.dataIndex || column.renderer ) {
+                column_names.push(column.dataIndex);
+                if ( column.csvText ) {
+                    headers.push(column.csvText);
+                } else {
+                    headers.push(column.text);
+                }
+            }
+        });
+
+        csv.push('"' + headers.join('","') + '"');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        };
+
+        _.each(store.getRecords(),function(record){
+            var node_values = [];
+            Ext.Array.each(columns,function(column){
+                if ( column.dataIndex) {
+                    var column_name = column.dataIndex;
+                    var display_value = record.get(column_name);
+
+                    if ( !column._csvIgnoreRender && column.renderer ) {
+                        display_value = column.renderer(display_value,mock_meta_data,record, 0, 0, store, grid.getView());
+                    }
+                    node_values.push(display_value);
+                } else {
+                    var display_value = null;
+                    if ( !column._csvIgnoreRender && column.renderer ) {
+                        display_value = column.renderer(display_value,mock_meta_data,record,record, 0, 0, store, grid.getView());
+                        node_values.push(display_value);
+                    }
+                }
+            },this);
+            csv.push('"' + node_values.join('","') + '"');
+        });
+        return csv.join('\r\n');
+    }
+});
+
+
 Ext.define('Rally.technicalservices.util.Parser', {
     singleton: true,
     /*
@@ -83,7 +690,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
         var start_revision = null;
         var end_revision = null;
 
-        Ext.Array.each( revisions, function(revision){
+        Ext.Array.each(revisions, function(revision){
             var values = this.findValuesForField(field_name, revision.get('Description'));
             console.log(values);
             if ( !start_revision && values.new_value == state ) {
@@ -94,27 +701,6 @@ Ext.define('Rally.technicalservices.util.Parser', {
                 end_revision = revision;
             }
         },this);
-
-        console.log('start, end', start_revision, end_revision);
-        //if ( ! start_revision || ! end_revision ) {
-        //    // maybe we skipped the start
-        //    if ( state_array ) {
-        //        start_index = Ext.Array.indexOf(state_array, start_state);
-        //        end_index = Ext.Array.indexOf(state_array, end_state);
-        //
-        //        Ext.Array.each( revision_array, function(revision) {
-        //            var values = this.findValuesForField(field_name, revision.get('Description'));
-        //            var revision_index = Ext.Array.indexOf(state_array, values.new_value);
-        //
-        //            if ( !start_revision &&  revision_index > start_index && revision_index < end_index ) {
-        //                start_revision = revision;
-        //            }
-        //            if ( !end_revision &&  revision_index > end_index ) {
-        //                end_revision = revision;
-        //            }
-        //        },this);
-        //    }
-        //}
 
         if ( end_revision && ! start_revision) {
             // we got to the end without seeing the start.
@@ -300,6 +886,40 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         }
         return matches;
+    },
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return a hash of objects that contain the following:
+     * key:  StateValue
+     * values: TimeInState, StartDate, EndDate
+     */
+
+    getTimeInStates: function(revisions, field_name, skipWeekends){
+        var transitions = this.getStateAttainments(revisions, field_name),
+            time_in_states = {},
+            prev_state = null,
+            skipWeekends = skipWeekends || false;
+
+        _.each(transitions, function(t){
+
+            time_in_states[t.state] = {};
+            time_in_states[t.state].startDate = t.change_date;
+            if (prev_state) {
+                time_in_states[prev_state].endDate = t.change_date;
+            }
+            prev_state = t.state;
+        });
+
+        _.each(time_in_states, function(val,key){
+            if (val.startDate && val.endDate){
+                time_in_states[key].timeInState = Rally.technicalservices.util.Utilities.daysBetween(val.endDate, val.startDate, skipWeekends);
+            } else if (!val.endDate) {
+                time_in_states[key].timeInState = Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.startDate, skipWeekends);
+            }
+
+        });
+
+        return time_in_states;
     }
 });
 Ext.define('Rally.technicalservices.util.Utilities', {
@@ -576,11 +1196,11 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
     singleton: true,
 
     getCycleTimeEndDateField: function(s){
-        return {dataIndex: s + '_end_date', text: s + ' End Date'};
+        return {dataIndex: s + '_end_date', text: 'End'};
     },
 
     getCycleTimeStartDateField: function(s){
-        return {dataIndex: s + '_start_date', text: s + ' Start Date'};
+        return {dataIndex: s + '_start_date', text: 'Start'};
     },
 
     getCycleTimeField: function(s){
@@ -639,29 +1259,21 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 }
 
                 this.set('_revisions', revisions);
+                var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates(revisions, this.stateField, this.skipWeekends);
 
-                _.each(this.stateList, function(state){
-                    if (state.length > 0) {
+
+
+                _.each(time_in_states, function(obj, state){
+                    if (state.length > 0 && Ext.Array.contains(this.stateList, state)) {
                         var state_cycle_field_name = Rally.technicalservices.ModelBuilder.getCycleTimeField(state).dataIndex,
                             state_cycle_start_name = Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(state).dataIndex,
-                            state_cycle_end_name = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(state).dataIndex,
-                            found_revisions = Rally.technicalservices.util.Parser.findStateRevisions(revisions, this.stateField, state);
+                            state_cycle_end_name = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(state).dataIndex;
 
-                        console.log("Found pair of revisions:", found_revisions);
-
-                        if (found_revisions.length == 2) {
-                            var start_date = found_revisions[0].get('CreationDate');
-                            var end_date = found_revisions[1].get('CreationDate');
-
-                            var cycle_time = Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends);
-                            console.log("do math on ", start_date, end_date, cycle_time);
-                            this.set(state_cycle_start_name, start_date);
-                            this.set(state_cycle_end_name, end_date);
-                            this.set(state_cycle_field_name, cycle_time);
-                        }
+                        this.set(state_cycle_start_name, obj.startDate || null);
+                        this.set(state_cycle_end_name, obj.endDate || null);
+                        this.set(state_cycle_field_name, obj.timeInState || -1);
                     }
-                },this);
-
+                }, this);
             },
             _getHistory: function(){
                 var deferred = Ext.create('Deft.Deferred');
@@ -757,9 +1369,11 @@ Ext.define("feature-cycle-time", {
         });
 
         var columnCfgs = [{
-            text: 'FormattedID',
-            dataIndex: 'FormattedID'
+            text: 'Formatted ID',
+            dataIndex: 'FormattedID',
+            _csvIgnoreRender: true
         }];
+
         _.each(allowedValues, function(v){
             if (v.length > 0 ) {
                 var field = Rally.technicalservices.ModelBuilder.getCycleTimeField(v);
@@ -786,10 +1400,12 @@ Ext.define("feature-cycle-time", {
             xtype: 'rallygrid',
             itemId: 'grid-cycletime',
             store: store,
+            showRowActionsColumn: false,
             columnCfgs: columnCfgs
         });
     },
     _cycleTimeFieldRenderer: function(v, m, r){
+        m.tdCls = 'line-column';
         if (v >= 0){
             return v;
         }
@@ -799,7 +1415,10 @@ Ext.define("feature-cycle-time", {
             return Rally.util.DateTime.formatWithDefault(Rally.util.DateTime.fromIsoString(v));
         }
     },
-    _export: function(){},
+    _export: function(){
+        var csv = Rally.technicalservices.FileUtilities.getCSVFromGrid(this.down('#grid-cycletime'));
+        Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+    },
     _initApp: function(){
 
         Rally.data.ModelFactory.getModel({
@@ -879,6 +1498,12 @@ Ext.define("feature-cycle-time", {
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+.line-column {
+    border-style: solid;
+    border-left-width: 1px;
+    border-left-color: #e0e0e0;
+    text-align: center;
 }
     </style>
 

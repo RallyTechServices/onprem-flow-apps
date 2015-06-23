@@ -3,10 +3,10 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Fri Jun 12 2015 20:10:37 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jun 23 2015 07:16:47 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Fri Jun 12 2015 20:10:37 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Jun 23 2015 07:16:47 GMT-0600 (MDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -40,6 +40,12 @@
     margin-top: 25px;
     margin-right: 5px;
     cursor: pointer;
+}
+.line-column {
+    border-style: solid;
+    border-left-width: 1px;
+    border-left-color: #e0e0e0;
+    text-align: center;
 }
     </style>
 
