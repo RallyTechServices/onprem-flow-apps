@@ -8,36 +8,22 @@
         var app_context = null;
     </script>
     
-    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0rc2/sdk-debug.js"></script>
-    <script type="text/javascript" src="https://rally1.rallydev.com/apps/2.0rc2/lib/analytics/analytics-all.js"></script>
+    <script type="text/javascript" src="<%= options.server %>/apps/<%= options.sdk %>/sdk-debug.js"></script>
+    <script type="text/javascript" src="<%= options.server %>/apps/<%= options.sdk %>/lib/analytics/analytics-all.js"></script>
         
+    <% with (scripts) { %>
+    <% [].concat(jasmine, vendor, reporters).forEach(function(script){ %>
+    <script src="<%= script %>"></script>
+    <% }) %>
+    <% }; %>
     
+    <% with (scripts) { %>
+    <% [].concat(helpers, specs).forEach(function(script){ %>
+    <script src="<%= script %>"></script>
+    <% }) %>
+    <% }; %>
     
-    <script src=".grunt/grunt-contrib-jasmine/jasmine.js"></script>
-    
-    <script src=".grunt/grunt-contrib-jasmine/jasmine-html.js"></script>
-    
-    <script src=".grunt/grunt-contrib-jasmine/reporter.js"></script>
-    
-    
-    
-    
-    
-    <script src="test/fast/fastHelper.js"></script>
-    
-    <script src="test/fast/ts-history-find-changes-spec.js"></script>
-    
-    <script src="test/fast/ts-history-find-start-end-states-spec.js"></script>
-    
-    <script src="test/fast/ts-parse-revision-description-for-project-spec.js"></script>
-    
-    <script src="test/fast/ts-parse-revision-description-spec.js"></script>
-    
-    <script src="test/fast/ts-utilities-spec.js"></script>
-    
-    
-    
-    
+        
     <script type="text/javascript">
         //Redefine onReady - bug in phantomjs such that onload isn't triggered for <link>, so the default Rally onReady won't work consistently
         Rally.sdk.Bootstrapper.onReady = function (onready) {
@@ -48,7 +34,7 @@
         };
                 
         Rally.onReady(function () {
-            Rally.loadScripts(["src/javascript/Blob.js","src/javascript/FileSaver.js","src/javascript/_ts-file-utilities.js","src/javascript/_ts-utilities-parser.js","src/javascript/_ts-utilities.js"],
+            Rally.loadScripts(<%= JSON.stringify(options.js_files) %>,
             function() {
                 
                 var jasmineEnv = jasmine.getEnv();

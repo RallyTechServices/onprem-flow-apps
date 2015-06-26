@@ -113,6 +113,7 @@ describe("Given arrays of revisions",function() {
                 [rev1,rev2,rev3], 'Schedule State', 'In-Progress', 'Completed',['Defined','In-Progress','Completed','Accepted','Finished']);
             expect( found_revisions.length ).toEqual(0);
             
-        });        
+        });
+
     });
 });

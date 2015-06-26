@@ -14,6 +14,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * new_value: {String} the value the field changed into
      */
     findValuesForField: function(field_name, text_string){
+        console.log('findValuesForField',field_name,text_string);
         var description = text_string;
         var new_value = null;
         var original_value = null;
@@ -54,7 +55,47 @@ Ext.define('Rally.technicalservices.util.Parser', {
             original_value: original_value
         };
     },
-    
+    /**
+     * given an array of revision objects, find the first revision that changed to the state and the last
+     * revision that changed from the state
+     *
+     * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
+     */
+    findStateRevisions: function(revisions, field_name, state){
+        var matching_revisions = [];
+        var start_revision = null;
+        var end_revision = null;
+
+        Ext.Array.each(revisions, function(revision){
+            var values = this.findValuesForField(field_name, revision.get('Description'));
+            console.log(values);
+            if ( !start_revision && values.new_value == state ) {
+                start_revision = revision;
+            }
+
+            if ( values.original_value == state ) {
+                end_revision = revision;
+            }
+        },this);
+
+        if ( end_revision && ! start_revision) {
+            // we got to the end without seeing the start.
+
+            // if the first rev is the original then let's assume it was our start
+            if ( revisions[0].get('Description') == "Original revision" ){
+                start_revision = revisions[0];
+            }
+        }
+
+        if ( start_revision && end_revision ) {
+            matching_revisions = [ start_revision, end_revision];
+        }
+
+        console.log('matching', matching_revisions)
+        return matching_revisions;
+
+    },
+
     /**
      * given an array of revision objects, find the first revision that changed to the first state and the last
      * revision that changed to the last state
@@ -221,5 +262,46 @@ Ext.define('Rally.technicalservices.util.Parser', {
             }
         }
         return matches;
+    },
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return a hash of objects that contain the following:
+     * key:  StateValue
+     * values: TimeInState, StartDate, EndDate
+     */
+
+    getTimeInStates: function(revisions, field_name, skipWeekends){
+        var transitions = this.getStateAttainments(revisions, field_name),
+            time_in_states = {},
+            prev_state = null,
+            skipWeekends = skipWeekends || false,
+            granularity = 'day';
+
+        _.each(transitions, function(t){
+
+            if (!time_in_states[t.state]){
+                time_in_states[t.state] = {timeInState: 0};
+                time_in_states[t.state].startDate = t.change_date;
+            }
+            time_in_states[t.state].lastStartDate = t.change_date;
+
+            if (prev_state) {
+                time_in_states[prev_state].timeInState += Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
+                time_in_states[prev_state].endDate = t.change_date;
+            }
+            prev_state = t.state;
+        });
+
+        _.each(time_in_states, function(val,key){
+
+            if (val.lastStartDate && val.endDate && val.lastStartDate > val.endDate ){
+                //This has multiple durations in state, so we want to clear out the endDate
+                val.endDate = null;
+            }
+            if (!val.endDate){
+                time_in_states[key].timeInState +=  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
+            }
+        });
+        return time_in_states;
     }
 });

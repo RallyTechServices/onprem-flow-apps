@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Feature Cycle Time</title>
+    <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Thu Jun 25 2015 20:42:46 GMT-0500 (CDT) -->
+    
+    <script type="text/javascript">
+        var APP_BUILD_DATE = "Thu Jun 25 2015 20:42:46 GMT-0500 (CDT)";
+        var CHECKSUM = 64927396115;
+    </script>
+    
+    <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
+
+    <script type="text/javascript">
+        Rally.onReady(function() {
+             
+/* Blob.js
+ * A Blob implementation.
+ * 2014-05-31
+ *
+ * By Eli Grey, http://eligrey.com
+ * By Devin Samarin, https://github.com/eboyjr
+ * License: X11/MIT
+ *   See https://github.com/eligrey/Blob.js/blob/master/LICENSE.md
+ */
+
+/*global self, unescape */
+/*jslint bitwise: true, regexp: true, confusion: true, es5: true, vars: true, white: true,
+ plusplus: true */
+
+/*! @source http://purl.eligrey.com/github/Blob.js/blob/master/Blob.js */
+
+(function (view) {
+    "use strict";
+
+    view.URL = view.URL || view.webkitURL;
+
+    if (view.Blob && view.URL) {
+        try {
+            new Blob;
+            return;
+        } catch (e) {}
+    }
+
+    // Internally we use a BlobBuilder implementation to base Blob off of
+    // in order to support older browsers that only have BlobBuilder
+    var BlobBuilder = view.BlobBuilder || view.WebKitBlobBuilder || view.MozBlobBuilder || (function(view) {
+            var
+                get_class = function(object) {
+                    return Object.prototype.toString.call(object).match(/^\[object\s(.*)\]$/)[1];
+                }
+                , FakeBlobBuilder = function BlobBuilder() {
+                    this.data = [];
+                }
+                , FakeBlob = function Blob(data, type, encoding) {
+                    this.data = data;
+                    this.size = data.length;
+                    this.type = type;
+                    this.encoding = encoding;
+                }
+                , FBB_proto = FakeBlobBuilder.prototype
+                , FB_proto = FakeBlob.prototype
+                , FileReaderSync = view.FileReaderSync
+                , FileException = function(type) {
+                    this.code = this[this.name = type];
+                }
+                , file_ex_codes = (
+                "NOT_FOUND_ERR SECURITY_ERR ABORT_ERR NOT_READABLE_ERR ENCODING_ERR "
+                + "NO_MODIFICATION_ALLOWED_ERR INVALID_STATE_ERR SYNTAX_ERR"
+                ).split(" ")
+                , file_ex_code = file_ex_codes.length
+                , real_URL = view.URL || view.webkitURL || view
+                , real_create_object_URL = real_URL.createObjectURL
+                , real_revoke_object_URL = real_URL.revokeObjectURL
+                , URL = real_URL
+                , btoa = view.btoa
+                , atob = view.atob
+
+                , ArrayBuffer = view.ArrayBuffer
+                , Uint8Array = view.Uint8Array
+                ;
+            FakeBlob.fake = FB_proto.fake = true;
+            while (file_ex_code--) {
+                FileException.prototype[file_ex_codes[file_ex_code]] = file_ex_code + 1;
+            }
+            if (!real_URL.createObjectURL) {
+                URL = view.URL = {};
+            }
+            URL.createObjectURL = function(blob) {
+                var
+                    type = blob.type
+                    , data_URI_header
+                    ;
+                if (type === null) {
+                    type = "application/octet-stream";
+                }
+                if (blob instanceof FakeBlob) {
+                    data_URI_header = "data:" + type;
+                    if (blob.encoding === "base64") {
+                        return data_URI_header + ";base64," + blob.data;
+                    } else if (blob.encoding === "URI") {
+                        return data_URI_header + "," + decodeURIComponent(blob.data);
+                    } if (btoa) {
+                        return data_URI_header + ";base64," + btoa(blob.data);
+                    } else {
+                        return data_URI_header + "," + encodeURIComponent(blob.data);
+                    }
+                } else if (real_create_object_URL) {
+                    return real_create_object_URL.call(real_URL, blob);
+                }
+            };
+            URL.revokeObjectURL = function(object_URL) {
+                if (object_URL.substring(0, 5) !== "data:" && real_revoke_object_URL) {
+                    real_revoke_object_URL.call(real_URL, object_URL);
+                }
+            };
+            FBB_proto.append = function(data/*, endings*/) {
+                var bb = this.data;
+                // decode data to a binary string
+                if (Uint8Array && (data instanceof ArrayBuffer || data instanceof Uint8Array)) {
+                    var
+                        str = ""
+                        , buf = new Uint8Array(data)
+                        , i = 0
+                        , buf_len = buf.length
+                        ;
+                    for (; i < buf_len; i++) {
+                        str += String.fromCharCode(buf[i]);
+                    }
+                    bb.push(str);
+                } else if (get_class(data) === "Blob" || get_class(data) === "File") {
+                    if (FileReaderSync) {
+                        var fr = new FileReaderSync;
+                        bb.push(fr.readAsBinaryString(data));
+                    } else {
+                        // async FileReader won't work as BlobBuilder is sync
+                        throw new FileException("NOT_READABLE_ERR");
+                    }
+                } else if (data instanceof FakeBlob) {
+                    if (data.encoding === "base64" && atob) {
+                        bb.push(atob(data.data));
+                    } else if (data.encoding === "URI") {
+                        bb.push(decodeURIComponent(data.data));
+                    } else if (data.encoding === "raw") {
+                        bb.push(data.data);
+                    }
+                } else {
+                    if (typeof data !== "string") {
+                        data += ""; // convert unsupported types to strings
+                    }
+                    // decode UTF-16 to binary string
+                    bb.push(unescape(encodeURIComponent(data)));
+                }
+            };
+            FBB_proto.getBlob = function(type) {
+                if (!arguments.length) {
+                    type = null;
+                }
+                return new FakeBlob(this.data.join(""), type, "raw");
+            };
+            FBB_proto.toString = function() {
+                return "[object BlobBuilder]";
+            };
+            FB_proto.slice = function(start, end, type) {
+                var args = arguments.length;
+                if (args < 3) {
+                    type = null;
+                }
+                return new FakeBlob(
+                    this.data.slice(start, args > 1 ? end : this.data.length)
+                    , type
+                    , this.encoding
+                );
+            };
+            FB_proto.toString = function() {
+                return "[object Blob]";
+            };
+            FB_proto.close = function() {
+                this.size = 0;
+                delete this.data;
+            };
+            return FakeBlobBuilder;
+        }(view));
+
+    view.Blob = function Blob(blobParts, options) {
+        var type = options ? (options.type || "") : "";
+        var builder = new BlobBuilder();
+        if (blobParts) {
+            for (var i = 0, len = blobParts.length; i < len; i++) {
+                builder.append(blobParts[i]);
+            }
+        }
+        return builder.getBlob(type);
+    };
+}(typeof self !== "undefined" && self || typeof window !== "undefined" && window || this.content || this));
+
+/* FileSaver.js
+ *  A saveAs() FileSaver implementation.
+ *  2014-05-27
+ *
+ *  By Eli Grey, http://eligrey.com
+ *  License: X11/MIT
+ *    See https://github.com/eligrey/FileSaver.js/blob/master/LICENSE.md
+ */
+
+/*global self */
+/*jslint bitwise: true, indent: 4, laxbreak: true, laxcomma: true, smarttabs: true, plusplus: true */
+
+/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
+
+var saveAs = saveAs
+        // IE 10+ (native saveAs)
+    || (typeof navigator !== "undefined" &&
+    navigator.msSaveOrOpenBlob && navigator.msSaveOrOpenBlob.bind(navigator))
+        // Everyone else
+    || (function(view) {
+        "use strict";
+        // IE <10 is explicitly unsupported
+        if (typeof navigator !== "undefined" &&
+            /MSIE [1-9]\./.test(navigator.userAgent)) {
+            return;
+        }
+        var
+            doc = view.document
+        // only get URL when necessary in case Blob.js hasn't overridden it yet
+            , get_URL = function() {
+                return view.URL || view.webkitURL || view;
+            }
+            , save_link = doc.createElementNS("http://www.w3.org/1999/xhtml", "a")
+            , can_use_save_link = !view.externalHost && "download" in save_link
+            , click = function(node) {
+                var event = doc.createEvent("MouseEvents");
+                event.initMouseEvent(
+                    "click", true, false, view, 0, 0, 0, 0, 0
+                    , false, false, false, false, 0, null
+                );
+                node.dispatchEvent(event);
+            }
+            , webkit_req_fs = view.webkitRequestFileSystem
+            , req_fs = view.requestFileSystem || webkit_req_fs || view.mozRequestFileSystem
+            , throw_outside = function(ex) {
+                (view.setImmediate || view.setTimeout)(function() {
+                    throw ex;
+                }, 0);
+            }
+            , force_saveable_type = "application/octet-stream"
+            , fs_min_size = 0
+            , deletion_queue = []
+            , process_deletion_queue = function() {
+                var i = deletion_queue.length;
+                while (i--) {
+                    var file = deletion_queue[i];
+                    if (typeof file === "string") { // file is an object URL
+                        get_URL().revokeObjectURL(file);
+                    } else { // file is a File
+                        file.remove();
+                    }
+                }
+                deletion_queue.length = 0; // clear queue
+            }
+            , dispatch = function(filesaver, event_types, event) {
+                event_types = [].concat(event_types);
+                var i = event_types.length;
+                while (i--) {
+                    var listener = filesaver["on" + event_types[i]];
+                    if (typeof listener === "function") {
+                        try {
+                            listener.call(filesaver, event || filesaver);
+                        } catch (ex) {
+                            throw_outside(ex);
+                        }
+                    }
+                }
+            }
+            , FileSaver = function(blob, name) {
+                // First try a.download, then web filesystem, then object URLs
+                var
+                    filesaver = this
+                    , type = blob.type
+                    , blob_changed = false
+                    , object_url
+                    , target_view
+                    , get_object_url = function() {
+                        var object_url = get_URL().createObjectURL(blob);
+                        deletion_queue.push(object_url);
+                        return object_url;
+                    }
+                    , dispatch_all = function() {
+                        dispatch(filesaver, "writestart progress write writeend".split(" "));
+                    }
+                // on any filesys errors revert to saving with object URLs
+                    , fs_error = function() {
+                        // don't create more object URLs than needed
+                        if (blob_changed || !object_url) {
+                            object_url = get_object_url(blob);
+                        }
+                        if (target_view) {
+                            target_view.location.href = object_url;
+                        } else {
+                            window.open(object_url, "_blank");
+                        }
+                        filesaver.readyState = filesaver.DONE;
+                        dispatch_all();
+                    }
+                    , abortable = function(func) {
+                        return function() {
+                            if (filesaver.readyState !== filesaver.DONE) {
+                                return func.apply(this, arguments);
+                            }
+                        };
+                    }
+                    , create_if_not_found = {create: true, exclusive: false}
+                    , slice
+                    ;
+                filesaver.readyState = filesaver.INIT;
+                if (!name) {
+                    name = "download";
+                }
+                if (can_use_save_link) {
+                    object_url = get_object_url(blob);
+                    save_link.href = object_url;
+                    save_link.download = name;
+                    click(save_link);
+                    filesaver.readyState = filesaver.DONE;
+                    dispatch_all();
+                    return;
+                }
+                // Object and web filesystem URLs have a problem saving in Google Chrome when
+                // viewed in a tab, so I force save with application/octet-stream
+                // http://code.google.com/p/chromium/issues/detail?id=91158
+                if (view.chrome && type && type !== force_saveable_type) {
+                    slice = blob.slice || blob.webkitSlice;
+                    blob = slice.call(blob, 0, blob.size, force_saveable_type);
+                    blob_changed = true;
+                }
+                // Since I can't be sure that the guessed media type will trigger a download
+                // in WebKit, I append .download to the filename.
+                // https://bugs.webkit.org/show_bug.cgi?id=65440
+                if (webkit_req_fs && name !== "download") {
+                    name += ".download";
+                }
+                if (type === force_saveable_type || webkit_req_fs) {
+                    target_view = view;
+                }
+                if (!req_fs) {
+                    fs_error();
+                    return;
+                }
+                fs_min_size += blob.size;
+                req_fs(view.TEMPORARY, fs_min_size, abortable(function(fs) {
+                    fs.root.getDirectory("saved", create_if_not_found, abortable(function(dir) {
+                        var save = function() {
+                            dir.getFile(name, create_if_not_found, abortable(function(file) {
+                                file.createWriter(abortable(function(writer) {
+                                    writer.onwriteend = function(event) {
+                                        target_view.location.href = file.toURL();
+                                        deletion_queue.push(file);
+                                        filesaver.readyState = filesaver.DONE;
+                                        dispatch(filesaver, "writeend", event);
+                                    };
+                                    writer.onerror = function() {
+                                        var error = writer.error;
+                                        if (error.code !== error.ABORT_ERR) {
+                                            fs_error();
+                                        }
+                                    };
+                                    "writestart progress write abort".split(" ").forEach(function(event) {
+                                        writer["on" + event] = filesaver["on" + event];
+                                    });
+                                    writer.write(blob);
+                                    filesaver.abort = function() {
+                                        writer.abort();
+                                        filesaver.readyState = filesaver.DONE;
+                                    };
+                                    filesaver.readyState = filesaver.WRITING;
+                                }), fs_error);
+                            }), fs_error);
+                        };
+                        dir.getFile(name, {create: false}, abortable(function(file) {
+                            // delete file if it already exists
+                            file.remove();
+                            save();
+                        }), abortable(function(ex) {
+                            if (ex.code === ex.NOT_FOUND_ERR) {
+                                save();
+                            } else {
+                                fs_error();
+                            }
+                        }));
+                    }), fs_error);
+                }), fs_error);
+            }
+            , FS_proto = FileSaver.prototype
+            , saveAs = function(blob, name) {
+                return new FileSaver(blob, name);
+            }
+            ;
+        FS_proto.abort = function() {
+            var filesaver = this;
+            filesaver.readyState = filesaver.DONE;
+            dispatch(filesaver, "abort");
+        };
+        FS_proto.readyState = FS_proto.INIT = 0;
+        FS_proto.WRITING = 1;
+        FS_proto.DONE = 2;
+
+        FS_proto.error =
+            FS_proto.onwritestart =
+                FS_proto.onprogress =
+                    FS_proto.onwrite =
+                        FS_proto.onabort =
+                            FS_proto.onerror =
+                                FS_proto.onwriteend =
+                                    null;
+
+        view.addEventListener("unload", process_deletion_queue, false);
+        saveAs.unload = function() {
+            process_deletion_queue();
+            view.removeEventListener("unload", process_deletion_queue, false);
+        };
+        return saveAs;
+    }(
+        typeof self !== "undefined" && self
+        || typeof window !== "undefined" && window
+        || this.content
+    ));
+// `self` is undefined in Firefox for Android content script context
+// while `this` is nsIContentFrameMessageManager
+// with an attribute `content` that corresponds to the window
+
+if (typeof module !== "undefined" && module !== null) {
+    module.exports = saveAs;
+} else if ((typeof define !== "undefined" && define !== null) && (define.amd != null)) {
+    define([], function() {
+        return saveAs;
+    });
+}
+
+Ext.define('Rally.technicalservices.FileUtilities', {
+    singleton: true,
+
+    saveHTMLToFile:function(html,file_name,type_object){
+        if (type_object == undefined){
+            type_object = {type:'text/html;charset=utf-8'};
+        }
+        var blob = new Blob([html],type_object);
+        saveAs(blob,file_name);
+    },
+    saveAs:function(text,file_name,type_object){
+        if (type_object == undefined){
+            type_object = {type:'text/plain'};
+        }
+        var blob = new Blob([text],type_object);
+        saveAs(blob,file_name);
+    },
+    saveTextAsFile: function(textToWrite, fileName)
+    {
+        var textFileAsBlob = new Blob([textToWrite], {type:'text/plain'});
+        var fileNameToSaveAs = fileName;
+
+        if (this.detectIE() >= 10){
+            console.log(window.navigator);
+            window.navigator.msSaveBlob(textFileAsBlob, fileNameToSaveAs);
+        } else {
+
+            var downloadLink = document.createElement("a");
+            downloadLink.download = fileNameToSaveAs;
+            downloadLink.innerHTML = "Download File";
+            if (window.webkitURL != null)
+            {
+                // Chrome allows the link to be clicked
+                // without actually adding it to the DOM.
+                downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+            }
+            else
+            {
+                // Firefox requires the link to be added to the DOM
+                // before it can be clicked.
+                downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+                downloadLink.onclick = this.destroyClickedElement;
+                downloadLink.style.display = "none";
+                document.body.appendChild(downloadLink);
+            }
+            downloadLink.click();
+        }
+    },
+    destroyClickedElement: function(event)
+    {
+        document.body.removeChild(event.target);
+    },
+    convertDataArrayToCSVText: function(data_array, requestedFieldHash){
+
+        var text = '';
+        Ext.each(Object.keys(requestedFieldHash), function(key){
+            text += requestedFieldHash[key] + ',';
+        });
+        text = text.replace(/,$/,'\n');
+
+        Ext.each(data_array, function(d){
+            Ext.each(Object.keys(requestedFieldHash), function(key){
+                if (d[key]){
+                    if (typeof d[key] === 'object'){
+                        if (d[key].FormattedID) {
+                            text += Ext.String.format("\"{0}\",",d[key].FormattedID );
+                        } else if (d[key].Name) {
+                            text += Ext.String.format("\"{0}\",",d[key].Name );
+                        } else if (!isNaN(Date.parse(d[key]))){
+                            text += Ext.String.format("\"{0}\",",Rally.util.DateTime.formatWithDefaultDateTime(d[key]));
+                        }else {
+                            text += Ext.String.format("\"{0}\",",d[key].toString());
+                        }
+                    } else {
+                        text += Ext.String.format("\"{0}\",",d[key] );
+                    }
+                } else {
+                    text += ',';
+                }
+            },this);
+            text = text.replace(/,$/,'\n');
+        },this);
+        return text;
+    },
+    scrubStringForXML: function(string){
+        console.log('scrub',string);
+        if (string) {
+            var scrubbed_string = string.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+            return scrubbed_string;
+        }
+        return '';
+    },
+    detectIE: function(){
+        var ua = window.navigator.userAgent;
+
+        var msie = ua.indexOf('MSIE ');
+        if (msie > 0) {
+            // IE 10 or older => return version number
+            return parseInt(ua.substring(msie + 5, ua.indexOf('.', msie)), 10);
+        }
+
+        var trident = ua.indexOf('Trident/');
+        if (trident > 0) {
+            // IE 11 => return version number
+            var rv = ua.indexOf('rv:');
+            return parseInt(ua.substring(rv + 3, ua.indexOf('.', rv)), 10);
+        }
+
+        var edge = ua.indexOf('Edge/');
+        if (edge > 0) {
+            // IE 12 => return version number
+            return parseInt(ua.substring(edge + 5, ua.indexOf('.', edge)), 10);
+        }
+
+        // other browser
+        return false;
+    },
+    //https://msdn.microsoft.com/en-us/library/ie/hh673542(v=vs.85).aspx
+    getCSVFromGrid:function(grid){
+        var store = grid.getStore();
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        var csv = [];
+
+        Ext.Array.each(columns,function(column){
+            if ( column.dataIndex || column.renderer ) {
+                column_names.push(column.dataIndex);
+                if ( column.csvText ) {
+                    headers.push(column.csvText);
+                } else {
+                    headers.push(column.text);
+                }
+            }
+        });
+
+        csv.push('"' + headers.join('","') + '"');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        };
+
+        _.each(store.getRecords(),function(record){
+            var node_values = [];
+            Ext.Array.each(columns,function(column){
+                if ( column.dataIndex) {
+                    var column_name = column.dataIndex;
+                    var display_value = record.get(column_name);
+
+                    if ( !column._csvIgnoreRender && column.renderer ) {
+                        display_value = column.renderer(display_value,mock_meta_data,record, 0, 0, store, grid.getView());
+                    }
+                    node_values.push(display_value);
+                } else {
+                    var display_value = null;
+                    if ( !column._csvIgnoreRender && column.renderer ) {
+                        display_value = column.renderer(display_value,mock_meta_data,record,record, 0, 0, store, grid.getView());
+                        node_values.push(display_value);
+                    }
+                }
+            },this);
+            csv.push('"' + node_values.join('","') + '"');
+        });
+        return csv.join('\r\n');
+    }
+});
+
+
+Ext.define('Rally.technicalservices.util.Parser', {
+    singleton: true,
+    /*
+     * Read through a text string to find the old and new values
+     * for a field that changed
+     * 
+     * {String} field_name, the name of the field that has a change
+     * {String} text_string, the string to test (usually the description of a revision)
+     * 
+     * returns a hash with three keys: 
+     * 
+     * description: {String} the text_string that was passed in
+     * original_value: {String} the value that the field had before the change happened
+     * new_value: {String} the value the field changed into
+     */
+    findValuesForField: function(field_name, text_string){
+        console.log('findValuesForField',field_name,text_string);
+        var description = text_string;
+        var new_value = null;
+        var original_value = null;
+        
+        // looking for "..., FIELD changed from [old] to [new], ..."
+        var regex = new RegExp( Ext.util.Format.uppercase(field_name) + " changed from \\[(.*?)\\] to \\[(.*?)\\]" );
+        var matches = this._getMatches(text_string, regex);
+
+        if ( matches.length > 0 ) { original_value = matches[0]; }
+        if ( matches.length > 1 ) { new_value = matches[1]; }
+        
+        if ( original_value === null && new_value === null ) {
+            // maybe the format is like
+            // FIELD added [new]
+            regex = new RegExp( Ext.util.Format.uppercase(field_name) + " added \\[(.*?)\\]" );
+            matches = this._getMatches(text_string, regex);
+    
+            if ( matches.length > 0 ) { 
+                new_value = matches[0]; 
+                original_value = "";
+            }
+        }
+        
+        if ( original_value === null && new_value === null && Ext.util.Format.uppercase(field_name) == 'PROJECTS') {
+            // Handle a revision entry on demo-west (Jan-2009): "Added project Project 3"
+            regex = new RegExp( "^Added project (.*)$" );
+            matches = this._getMatches(text_string, regex);
+
+            if ( matches.length > 0 ) {
+                new_value = matches[0];
+                original_value = "";
+            }
+        }
+        
+        return {
+            description: text_string,
+            new_value: new_value,
+            original_value: original_value
+        };
+    },
+    /**
+     * given an array of revision objects, find the first revision that changed to the state and the last
+     * revision that changed from the state
+     *
+     * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
+     */
+    findStateRevisions: function(revisions, field_name, state){
+        var matching_revisions = [];
+        var start_revision = null;
+        var end_revision = null;
+
+        Ext.Array.each(revisions, function(revision){
+            var values = this.findValuesForField(field_name, revision.get('Description'));
+            console.log(values);
+            if ( !start_revision && values.new_value == state ) {
+                start_revision = revision;
+            }
+
+            if ( values.original_value == state ) {
+                end_revision = revision;
+            }
+        },this);
+
+        if ( end_revision && ! start_revision) {
+            // we got to the end without seeing the start.
+
+            // if the first rev is the original then let's assume it was our start
+            if ( revisions[0].get('Description') == "Original revision" ){
+                start_revision = revisions[0];
+            }
+        }
+
+        if ( start_revision && end_revision ) {
+            matching_revisions = [ start_revision, end_revision];
+        }
+
+        console.log('matching', matching_revisions)
+        return matching_revisions;
+
+    },
+
+    /**
+     * given an array of revision objects, find the first revision that changed to the first state and the last
+     * revision that changed to the last state
+     * 
+     * return a two-value array (two revisions) or an empty array (if neither or only one state revision is found)
+     */
+    findEntryExitRevisions: function(revision_array, field_name, start_state, end_state, state_array) {
+        var matching_revisions = [];
+        var start_revision = null;
+        var end_revision = null;
+        
+        Ext.Array.each( revision_array, function(revision){
+            var values = this.findValuesForField(field_name, revision.get('Description'));
+            
+            if ( !start_revision && values.new_value == start_state ) {
+                start_revision = revision;
+            }
+            
+            if ( values.new_value == end_state ) {
+                end_revision = revision;
+            }
+        },this);
+        
+        if ( ! start_revision || ! end_revision ) {
+            // maybe we skipped the start
+            if ( state_array ) {
+                start_index = Ext.Array.indexOf(state_array, start_state);
+                end_index = Ext.Array.indexOf(state_array, end_state);
+    
+                Ext.Array.each( revision_array, function(revision) {
+                    var values = this.findValuesForField(field_name, revision.get('Description'));
+                    var revision_index = Ext.Array.indexOf(state_array, values.new_value);
+                    
+                    if ( !start_revision &&  revision_index > start_index && revision_index < end_index ) {
+                        start_revision = revision;
+                    }
+                    if ( !end_revision &&  revision_index > end_index ) {
+                        end_revision = revision;
+                    }
+                },this);
+            }
+        }
+        
+        if ( end_revision && ! start_revision) {
+            // we got to the end without seeing the start.
+            
+            // if the first rev is the original then let's assume it was our start
+            if ( revision_array[0].get('Description') == "Original revision" ){
+                start_revision = revision_array[0];
+            }
+        }
+        
+        if ( start_revision && end_revision ) {
+            matching_revisions = [ start_revision, end_revision];
+        }
+        
+        return matching_revisions;
+    },
+    
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return an array of objects
+     * representing the entry into states for that array.
+     */
+    getStateAttainments: function(revision_array, field_name) {
+        var transitions = [];
+        
+        var first_date = null;
+        var first_value = null;
+        
+        Ext.Array.each( revision_array, function(revision, index){
+            var description = revision.get('Description');
+            // find original revision if passed
+
+            var values = this.findValuesForField(field_name, description);
+            if ( values.new_value !== null ) {
+                transitions.push({ 
+                    change_date: revision.get('CreationDate'),
+                    state: values.new_value 
+                });
+                // push original value back to start if we don't have one
+                // and if this isn't the first one (starting right into the state)
+                if ( values.original_value !== null && first_value === null ) {
+                    first_value = values.original_value;
+                }
+            } else if ( index == 0 ) { 
+                first_date = revision.get('CreationDate');
+            }
+            
+        },this);
+        
+        if ( first_date && first_value ) {
+            transitions.unshift({
+                change_date: first_date,
+                state: first_value 
+            });
+        }
+        
+        return transitions;
+    },
+    /*
+     * Provide a hash with a key for each day between first and end; value of
+     * each is a hash with keys for each state value that has items -- the value
+     * of each of these is an array of the items that are in that state (so we let
+     * some other function determine value however it wants)
+     * 
+     * Input an array of items that have a field called _changes (from getStateAttainments)
+     */
+    getCumulativeFlow: function(item_array, first_date, end_date){
+        var flow = {};
+        
+        var check_date = first_date;
+        
+        var preceding_day_values_by_item_id = {};
+        
+        while (check_date <= end_date ) {
+            flow[check_date] = {};
+            
+            Ext.Array.each(item_array,function(item){
+                var preceding_date = Rally.util.DateTime.add(check_date,'day',-1);
+                var state = this._getStateBetween(preceding_date,check_date,item);
+                if ( state ) {
+                    preceding_day_values_by_item_id[item.get('ObjectID')] = state;
+                } else if ( preceding_day_values_by_item_id[item.get('ObjectID')]) {
+                    var state = preceding_day_values_by_item_id[item.get('ObjectID')];
+                }
+                                
+                if ( state ) {
+                    if ( ! flow[check_date][state] ) {
+                        flow[check_date][state] = [];
+                    }
+                    
+                    flow[check_date][state].push(item);
+                }
+            },this);
+            
+            check_date = Rally.util.DateTime.add(check_date,'day',1);
+        }
+        
+        return flow;
+    },
+    /*
+     * expect an item to have a _changes field (from getStateAttainments)
+     * 
+     */
+    _getStateBetween: function (preceding_date,check_date,item){
+        var state = null;
+        var changes = item.get('_changes');
+        
+        Ext.Array.each(changes, function(change){
+            var change_date = change.change_date;
+            if ( change_date > preceding_date && change_date <= check_date ) {
+                state = change.state;
+            }
+        });
+        return state;
+    },
+    _getMatches: function(string, regex, index) {
+        var matches = [];
+        var all_matches = regex.exec(string);
+        if ( Ext.isArray(all_matches) ) {
+            for ( var i=1;i<all_matches.length;i++){
+                matches.push(all_matches[i]);
+            }
+        }
+        return matches;
+    },
+    /*
+     * Given an array of revisions and a field name that holds the state,
+     * find all the state transitions and return a hash of objects that contain the following:
+     * key:  StateValue
+     * values: TimeInState, StartDate, EndDate
+     */
+
+    getTimeInStates: function(revisions, field_name, skipWeekends){
+        var transitions = this.getStateAttainments(revisions, field_name),
+            time_in_states = {},
+            prev_state = null,
+            skipWeekends = skipWeekends || false,
+            granularity = 'day';
+
+        _.each(transitions, function(t){
+
+            if (!time_in_states[t.state]){
+                time_in_states[t.state] = {timeInState: 0};
+                time_in_states[t.state].startDate = t.change_date;
+            }
+            time_in_states[t.state].lastStartDate = t.change_date;
+
+            if (prev_state) {
+                time_in_states[prev_state].timeInState += Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
+                time_in_states[prev_state].endDate = t.change_date;
+            }
+            prev_state = t.state;
+        });
+
+        _.each(time_in_states, function(val,key){
+
+            if (val.lastStartDate && val.endDate && val.lastStartDate > val.endDate ){
+                //This has multiple durations in state, so we want to clear out the endDate
+                val.endDate = null;
+            }
+            if (!val.endDate){
+                time_in_states[key].timeInState +=  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
+            }
+        });
+        return time_in_states;
+    }
+});
+Ext.define('Rally.technicalservices.util.Utilities', {
+    singleton: true,
+    hashToArray: function(hash) {
+        var result = [];
+        for ( var key in hash ) {
+            result.push(hash[key]);
+        }
+        return result;
+    },
+    daysBetween: function(begin_date_js,end_date_js,skip_weekends){
+
+        if ( typeof(begin_date_js) == "string" ) {
+            begin_date_js = Rally.util.DateTime.fromIsoString(begin_date_js);
+        }
+        if ( typeof(end_date_js) == "string" ) {
+            end_date_js = Rally.util.DateTime.fromIsoString(end_date_js);
+        }
+        
+        var dDate1 = Ext.clone(begin_date_js).setHours(0,0,0,0);
+        var dDate2 = Ext.clone(end_date_js).setHours(0,0,0,0);
+        
+        if ( dDate1 == dDate2 ) { return 0; }
+        if (typeof dDate1 === "number") { dDate1 = new Date(dDate1); }
+        if (typeof dDate2 === "number") { dDate2 = new Date(dDate2); }
+            
+        if ( !skip_weekends ) {
+            return Math.abs( Rally.util.DateTime.getDifference(dDate1,dDate2,'day') );
+        } else {
+            // shift to the following Monday
+            if (!this.isWeekday(dDate1)) {
+                dDate1 = this.shiftDateToMonday(dDate1);
+            }
+            if (!this.isWeekday(dDate2)) {
+                dDate2 = this.shiftDateToMonday(dDate2);
+            }
+
+
+            // from the sOverflow
+            var iWeeks, iDateDiff, iAdjust = 0;
+            if (dDate2 < dDate1) 
+            { 
+                var x = dDate2;
+                dDate2 = dDate1;
+                dDate1 = x;
+            }
+            var iWeekday1 = dDate1.getDay(); // day of week
+            var iWeekday2 = dDate2.getDay();
+            iWeekday1 = (iWeekday1 == 0) ? 7 : iWeekday1; // change Sunday from 0 to 7
+            iWeekday2 = (iWeekday2 == 0) ? 7 : iWeekday2;
+            if ((iWeekday1 > 5) && (iWeekday2 > 5)) iAdjust = 1; // adjustment if both days on weekend
+            iWeekday1 = (iWeekday1 > 5) ? 5 : iWeekday1; // only count weekdays
+            iWeekday2 = (iWeekday2 > 5) ? 5 : iWeekday2;
+    
+            // calculate differnece in weeks (1000mS * 60sec * 60min * 24hrs * 7 days = 604800000)
+            iWeeks = Math.floor((dDate2.getTime() - dDate1.getTime()) / 604800000)
+    
+            if (iWeekday1 <= iWeekday2) {
+              iDateDiff = (iWeeks * 5) + (iWeekday2 - iWeekday1)
+            } else {
+              iDateDiff = ((iWeeks + 1) * 5) - (iWeekday1 - iWeekday2)
+            }
+    
+            iDateDiff -= iAdjust // take into account both days on weekend
+    
+            if ( iDateDiff < 0 ) { iDateDiff = 0; }
+            return (iDateDiff); 
+        }
+    },
+
+    isWeekday: function(check_date) {
+        var weekday = true;
+        var day = check_date.getDay();
+        
+        if ( day === 0 || day === 6 ) {
+            weekday = false;
+        }
+        return weekday;
+    },
+    shiftDateToMonday: function(check_date) {
+        var day = check_date.getDay();
+        
+        var delta = 0;
+        
+        if ( day === 0 ) {
+            // it's Sunday
+            delta = 1;
+        }
+        if ( day === 6 ) {
+            delta = 2;
+        }
+        
+        var shifted_date = check_date;
+        if ( delta > 0 ) {
+            shifted_date = new Date(check_date.setHours(0));
+            shifted_date = Rally.util.DateTime.add(shifted_date,"day",delta);
+        }
+        return shifted_date;
+    },
+    /*
+     * compress size is the point at which to move to weeks instead of days
+     */
+    arrayOfDaysBetween: function(begin_date_js, end_date_js, skip_weekends, compress_size ) {
+        var the_array = [];
+        if ( typeof(begin_date_js) == "string" ) {
+            begin_date_js = Rally.util.DateTime.fromIsoString(begin_date_js);
+        }
+        if ( typeof(end_date_js) == "string" ) {
+            end_date_js = Rally.util.DateTime.fromIsoString(end_date_js);
+        }
+        if ( begin_date_js > end_date_js ) {
+            var swap_holder = end_date_js;
+            end_date_js = begin_date_js;
+            begin_date_js = swap_holder;
+        }
+                
+        var dDate1 = Ext.clone(begin_date_js).setHours(0,0,0,0);
+        var dDate2 = Ext.clone(end_date_js).setHours(0,0,0,0);
+        
+        var number_of_days = this.daysBetween(begin_date_js,end_date_js,skip_weekends);
+        
+        var add_value = 1;
+        var add_unit = 'day';
+        
+        if ( Ext.isNumber(compress_size) && number_of_days > compress_size ) {
+            add_value = 7;
+        }
+        
+        if ( number_of_days <= 2 ) {
+            add_value = 30;
+            add_unit = 'minute';
+            dDate2 = Ext.clone(end_date_js).setHours(23,59,0,0);
+        }
+       
+        
+        var check_date = new Date(dDate1);
+        
+        while (check_date <= dDate2) {
+            if ( !skip_weekends || this.isWeekday(check_date) || add_value === 7 || add_unit == 'minute' ) {
+                the_array.push(check_date);
+            }
+            check_date = Rally.util.DateTime.add(check_date,add_unit,add_value);
+        }
+        
+        return the_array;
+    }
+    
+});
+/**
+ * A link that pops up a version dialog box
+ */
+
+Ext.define('Rally.technicalservices.InfoLink',{
+    extend: 'Ext.Component',
+    alias: 'widget.tsinfolink',
+    
+    /**
+     * @cfg {String} informationHtml
+     * Additional text to be displayed on the popup dialog (for exmaple,
+     * to add a description of the app's use or functionality)
+     */
+    informationHtml: null,
+    
+    /**
+     * 
+     * cfg {String} title
+     * The title for the dialog box
+     */
+     title: "Build Information",
+    
+    renderTpl: "<div id='{id}-infolinkWrap' class='tsinfolink'>i</div>",
+
+    initComponent: function() {
+        this.callParent(arguments);
+       
+    },
+    
+    onRender: function() {
+        this.callParent(arguments);
+        this.mon(this.el,'click',this.onClick,this);
+    },
+    _generateChecksum: function(string){
+        var chk = 0x12345678,
+            i;
+        string = string.replace(/var CHECKSUM = .*;/,"");
+        string = string.replace(/\s/g,"");  //Remove all whitespace from the string.
+        
+        for (i = 0; i < string.length; i++) {
+            chk += (string.charCodeAt(i) * i);
+        }
+    
+        return chk;
+    },
+    _checkChecksum: function(container) {
+        var me = this;
+        Ext.Ajax.request({
+            url: document.URL,
+            params: {
+                id: 1
+            },
+            success: function (response) {
+                text = response.responseText;
+                if ( CHECKSUM ) {
+                    if ( CHECKSUM !== me._generateChecksum(text) ) {
+                        console.log("Checksums don't match!");
+                        if ( me.dialog ) {
+                            me.dialog.add({xtype:'container',html:'Checksums do not match'});
+                        }
+                    }
+                }
+            }
+        });
+    },
+    onClick: function(e) {
+        var me = this;
+        this._checkChecksum(this);
+        
+        var dialog_items = [];
+        
+        if ( this.informationHtml ) {
+            dialog_items.push({
+                xtype:'container',
+                html: this.informationHtml
+            });
+        }
+                
+        dialog_items.push({
+            xtype:'container',
+            html:"This app was created by the Rally Technical Services Team."
+        });
+        
+        if ( APP_BUILD_DATE ) {
+            dialog_items.push({
+                xtype:'container',
+                html:'Build date/time: ' + APP_BUILD_DATE
+            });
+        }
+        
+        if (this.dialog){this.dialog.destroy();}
+        this.dialog = Ext.create('Rally.ui.dialog.Dialog',{
+            defaults: { padding: 5, margin: 5 },
+            closable: true,
+            draggable: true,
+            title: me.title,
+            items: dialog_items
+        });
+        this.dialog.show();
+    }
+});
+
+/*
+ */
+Ext.define('Rally.technicalservices.Logger',{
+    constructor: function(config){
+        Ext.apply(this,config);
+    },
+    log: function(args){
+        var timestamp = "[ " + Ext.util.Format.date(new Date(), "Y-m-d H:i:s.u") + " ]";
+        //var output_args = arguments;
+        //output_args.unshift( [ "[ " + timestamp + " ]" ] );
+        //output_args = Ext.Array.push(output_args,arguments);
+        
+        var output_args = [];
+        output_args = Ext.Array.push(output_args,[timestamp]);
+        output_args = Ext.Array.push(output_args, Ext.Array.slice(arguments,0));
+
+        window.console && console.log.apply(console,output_args);
+    }
+
+});
+
+Ext.define('Rally.technicalservices.ModelBuilder',{
+    singleton: true,
+
+    getCycleTimeEndDateField: function(s){
+        return {dataIndex: s + '_end_date', text: 'End'};
+    },
+
+    getCycleTimeStartDateField: function(s){
+        return {dataIndex: s + '_start_date', text: 'Start'};
+    },
+
+    getCycleTimeField: function(s){
+        return {dataIndex: s + '_cycle_time', text: s};
+    },
+    getTotalField: function(states){
+        return {dataIndex: 'total', text: Ext.String.format('Total days ({0} to {1})',states[0], states[states.length-1])};
+    },
+
+    build: function(model, states, state_field ){
+
+        var fields = [];
+        _.each(states, function(s){
+            if (s.length > 0) {
+                fields.push({
+                    name: Rally.technicalservices.ModelBuilder.getCycleTimeField(s).dataIndex,
+                    type: 'float',
+                    defaultValue: -1,
+                    displayName: Rally.technicalservices.ModelBuilder.getCycleTimeField(s).text
+                });
+                fields.push({
+                    name: Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(s).dataIndex,
+                    type: 'date',
+                    defaultValue: null,
+                    displayName: Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(s).text
+                });
+                fields.push({
+                    name: Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(s).dataIndex,
+                    type: 'date',
+                    defaultValue: null,
+                    displayName: Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(s).text
+                });
+            }
+        });
+        fields.push({
+            name: 'total',
+            type: 'float',
+            defaultValue: -1,
+            displayName: Ext.String.format('Total days ({0} to {1})',states[0], states.slice(-1)[0])
+        });
+
+        return Ext.define('Rally.technicalservices.model.ArtifactCycleTime',{
+            extend: model,
+            fields: fields,
+            stateField: state_field,
+            stateList: states,
+            skipWeekends: false,
+
+
+            calculate: function(){
+                this._getHistory().then({
+                    scope: this,
+                    success: this._calculateHistory,
+                    failure: function(operation){
+                        Rally.ui.notify.Notifier.showError({message: 'Error getting revision history: ' + operation.error.errors.join(',')});
+                    }
+                });
+            },
+            _calculateHistory: function(revisions){
+
+
+                if (!revisions){
+                    return;
+                }
+
+                this.set('_revisions', revisions);
+                var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates(revisions, this.stateField, this.skipWeekends);
+
+                _.each(time_in_states, function(obj, state){
+                    if (state.length > 0 && Ext.Array.contains(this.stateList, state)) {
+                        var state_cycle_field_name = Rally.technicalservices.ModelBuilder.getCycleTimeField(state).dataIndex,
+                            state_cycle_start_name = Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(state).dataIndex,
+                            state_cycle_end_name = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(state).dataIndex;
+
+                        this.set(state_cycle_start_name, obj.startDate || null);
+                        this.set(state_cycle_end_name, obj.endDate || null);
+                        this.set(state_cycle_field_name, obj.timeInState || -1);
+                    }
+                }, this);
+
+                var start_state = this.stateList[0],
+                    end_state = this.stateList[this.stateList.length - 1];
+
+                if (time_in_states[start_state] && time_in_states[end_state]){
+                    var start_date = time_in_states[start_state].startDate,
+                        end_date = time_in_states[end_state].lastStartDate;
+                    this.set('total', Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends));
+                }
+            },
+            _getHistory: function(){
+                var deferred = Ext.create('Deft.Deferred');
+
+                if (this.get('_revisions')){
+                    deferred.resolve(this.get('_revisions'));
+                }
+
+                // contains searches are case insensitive, so
+                // TODO: deal with possibility that the name of the field is in the description change
+                //       without changing the field itself (like in the name or something)
+                var state_selection_filters = Ext.create('Rally.data.wsapi.Filter',{
+                    property:'Description',
+                    operator:'contains',
+                    value: Ext.util.Format.uppercase(this.stateField)
+                }).or(Ext.create('Rally.data.wsapi.Filter',{
+                    property:'Description',
+                    value:'Original revision'
+                }));
+
+                var rev_history_filter = Ext.create('Rally.data.wsapi.Filter',{
+                    property:"RevisionHistory.ObjectID",
+                    value: this.get('RevisionHistory').ObjectID
+                });
+
+                var filters = rev_history_filter.and(state_selection_filters);
+
+                var store = Ext.create('Rally.data.wsapi.Store',{
+                    model:'Revision',
+                    filters: filters,
+                    fetch: ['Description','CreationDate'],
+                    sorters: [{property:'CreationDate',direction:'ASC'}]
+                });
+                store.load({
+                    scope: this,
+                    callback: function(revisions, operation, success){
+                        if (success){
+                            deferred.resolve(revisions);
+                        } else {
+                            deferred.reject(operation);
+                        }
+                    }
+                });
+                return deferred.promise;
+            }
+        });
+    }
+});
+
+Ext.define("feature-cycle-time", {
+    extend: 'Rally.app.App',
+    componentCls: 'app',
+    logger: new Rally.technicalservices.Logger(),
+    defaults: { margin: 10 },
+    config: {
+        defaultSettings: {
+            typePath: 'portfolioitem/feature',
+            stateField: 'State',
+            doneState: 'Completed'
+        }
+    },
+    items: [
+        {xtype:'container',itemId:'ct_header', layout: {type: 'hbox'}},
+        {xtype:'container',itemId:'ct_body'},
+        {xtype:'tsinfolink'}
+    ],
+    launch: function() {
+        this._initApp();
+    },
+    _buildGrid: function(){
+
+        this.down('#ct_body').removeAll();
+        var start_state = this.down('#cb-start-state').getValue(),
+            end_state = this.down('#cb-end-state').getValue();
+        this.logger.log('states', start_state, end_state);
+
+        if (!start_state || !end_state){
+            this.down('#ct_body').add({
+                xtype: 'container',
+                html: 'Please select a start and end state and click update to run.',
+                flex: 1,
+                style: {
+                    textAlign: 'center'
+                }
+            });
+            return;
+        }
+
+        var model = this.model,
+            stateField = this.field,
+            allowedValues = this._getStatesOfInterest(start_state, end_state, this.allowedValues);
+
+        var cycle_model = Rally.technicalservices.ModelBuilder.build(model, allowedValues, stateField.name);
+        this.logger.log('model', cycle_model);
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            pageSize: 200,
+            model: cycle_model,
+            fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'],
+            limit: 'Infinity',
+            autoLoad: true,
+            listeners: {
+                load: function(store, records){
+                    _.each(records, function(r){
+                        r.calculate();
+                    });
+                }
+            }
+        });
+
+        var columnCfgs = [{
+            text: 'Name',
+            dataIndex: 'Name',
+            _csvIgnoreRender: true,
+            flex: 3
+        }];
+
+        var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
+        field.renderer = this._cycleTimeFieldRenderer;
+        field.flex = 1;
+        columnCfgs.push(field);
+
+        _.each(allowedValues, function(v){
+            if (v.length > 0 ) {
+                var field = Rally.technicalservices.ModelBuilder.getCycleTimeField(v);
+                field.renderer = this._cycleTimeFieldRenderer;
+                field.flex = 2;
+                columnCfgs.push(field);
+
+
+                var start_field = Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(v);
+                start_field.renderer = this._dateRenderer;
+                start_field.flex = 2;
+                columnCfgs.push(start_field);
+
+                field = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(v);
+                field.renderer = this._dateRenderer;
+                field.flex = 2;
+                columnCfgs.push(field);
+            }
+        }, this);
+
+        if (this.down('#grid-cycletime')){
+            this.down('#grid-cycletime').destroy();
+        }
+
+        this.down('#ct_body').add({
+            xtype: 'rallygrid',
+            itemId: 'grid-cycletime',
+            store: store,
+            showRowActionsColumn: false,
+            columnCfgs: columnCfgs
+        });
+    },
+    _getStatesOfInterest: function(start_state, end_state, allowed_values){
+        var start_idx = _.indexOf(allowed_values, start_state),
+            end_idx = _.indexOf(allowed_values, end_state);
+
+        return allowed_values.slice(start_idx, end_idx+1);
+    },
+    _cycleTimeFieldRenderer: function(v, m, r){
+        m.tdCls = 'line-column';
+        if (v >= 0){
+            return v;
+        }
+    },
+    _dateRenderer: function(v, m ,r){
+        if (v) {
+            return Rally.util.DateTime.formatWithDefault(Rally.util.DateTime.fromIsoString(v));
+        }
+    },
+    _export: function(){
+        var csv = Rally.technicalservices.FileUtilities.getCSVFromGrid(this.down('#grid-cycletime'));
+        Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+    },
+    _initApp: function(){
+
+        Rally.data.ModelFactory.getModel({
+            type: this.getSetting('typePath'),
+            scope: this,
+            success: function(model) {
+                var field = model.getField(this.getSetting('stateField'));
+                if (field){
+                    field.getAllowedValueStore().load({
+                        scope: this,
+                        sorters: [{
+                            property: 'ValueIndex',
+                            direction: 'ASC'
+                        }],
+                        scope: this,
+                        callback: function(records, operation, success){
+                            if (success) {
+                                var allowedValues = _.map(records, function (r) {
+                                    return r.get('StringValue')
+                                });
+                                this._initComponents(allowedValues);
+                                this.model = model;
+                                this.allowedValues = allowedValues;
+                                this.field = field;
+                                this._buildGrid();
+
+                            } else {
+                                Rally.ui.notify.Notifier.showError({message: Ext.String.format('Unable to load allowed values for state field "{0}".  Error(s): [{1}]',
+                                    this.getSetting('stateField'),
+                                    operation.error.errors.join(',')
+                                )});
+                            }
+                        }
+                    });
+                } else {
+                    Rally.ui.notify.Notifier.showError({message: Ext.String.format('Unable to load allowed values for state field "{0}". The field does not exist on the PortfolioItem type model.',
+                        this.getSetting('stateField')
+                    )});
+                }
+            }
+        });
+    },
+    _initComponents: function(allowedValues){
+        this.logger.log('_initApp', this.getSetting('typePath'), this.getSetting('stateField'));
+
+        var header_ct = this.down('#ct_header');
+
+        var cb_start = header_ct.add({
+            xtype: 'rallycombobox',
+            fieldLabel: 'Start State',
+            labelAlign: 'right',
+            itemId: 'cb-start-state',
+            margin: 10,
+            stateful: true,
+            stateId: this.getContext().getScopedStateId('cb-start'),
+            store: allowedValues
+        });
+
+
+        var cb_end = header_ct.add({
+            xtype: 'rallycombobox',
+            fieldLabel: 'End State',
+            labelAlign: 'right',
+            itemId: 'cb-end-state',
+            margin: 10,
+            stateful: true,
+            stateId: this.getContext().getScopedStateId('cb-end'),
+            store: allowedValues
+        });
+        //cb_end.setValue(allowedValues.slice(-1)[0]);
+
+        header_ct.add({
+            xtype: 'rallybutton',
+            text: 'Update',
+            margin: 10,
+            listeners: {
+                scope: this,
+                click: this._buildGrid
+            }
+        });
+
+        header_ct.add({
+            xtype: 'rallybutton',
+            text: 'Export',
+            margin: 10,
+            listeners: {
+                scope: this,
+                click: this._export
+            }
+        });
+
+    }
+
+ });
+
+            
+               Rally.launchApp('feature-cycle-time', {
+                   name: 'Feature Cycle Time'
+               });
+        });
+    </script>
+    
+    <style type="text/css">
+
+.app {
+}
+.tsinfolink {
+    position:absolute;
+    right:0px;
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    text-align: center;
+    color: white;
+    background: #C0C0C0;
+    border-style: solid;
+    border-width: 1px;
+    margin-top: 25px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+.line-column {
+    border-style: solid;
+    border-left-width: 1px;
+    border-left-color: #e0e0e0;
+    text-align: center;
+}
+    </style>
+
+</head>
+<body></body>
+</html>
