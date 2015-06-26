@@ -12,6 +12,9 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
     getCycleTimeField: function(s){
         return {dataIndex: s + '_cycle_time', text: s};
     },
+    getTotalField: function(states){
+        return {dataIndex: 'total', text: Ext.String.format('Total days ({0} to {1})',states[0], states[states.length-1])};
+    },
 
     build: function(model, states, state_field ){
 
@@ -37,6 +40,12 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                     displayName: Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(s).text
                 });
             }
+        });
+        fields.push({
+            name: 'total',
+            type: 'float',
+            defaultValue: -1,
+            displayName: Ext.String.format('Total days ({0} to {1})',states[0], states.slice(-1)[0])
         });
 
         return Ext.define('Rally.technicalservices.model.ArtifactCycleTime',{
@@ -67,8 +76,6 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 this.set('_revisions', revisions);
                 var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates(revisions, this.stateField, this.skipWeekends);
 
-
-
                 _.each(time_in_states, function(obj, state){
                     if (state.length > 0 && Ext.Array.contains(this.stateList, state)) {
                         var state_cycle_field_name = Rally.technicalservices.ModelBuilder.getCycleTimeField(state).dataIndex,
@@ -80,6 +87,15 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                         this.set(state_cycle_field_name, obj.timeInState || -1);
                     }
                 }, this);
+
+                var start_state = this.stateList[0],
+                    end_state = this.stateList[this.stateList.length - 1],
+                    start_date = time_in_states[start_state].startDate,
+                    end_date = time_in_states[end_state].lastStartDate;
+
+                if (start_date && end_date){
+                    this.set('total', Rally.technicalservices.util.Parser.daysBetween(end_date, start_date, this.skipWeekends));
+                }
             },
             _getHistory: function(){
                 var deferred = Ext.create('Deft.Deferred');
