@@ -280,25 +280,26 @@ Ext.define('Rally.technicalservices.util.Parser', {
         _.each(transitions, function(t){
 
             if (!time_in_states[t.state]){
-                time_in_states[t.state] = {};
-                time_in_states[t.state].firstStartDate = t.change_date;
+                time_in_states[t.state] = {timeInState: 0};
+                time_in_states[t.state].startDate = t.change_date;
             }
             time_in_states[t.state].lastStartDate = t.change_date;
 
             if (prev_state) {
-                time_in_states[prev_state].timeInState = time_in_states[prev_state] || 0 + Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
+                time_in_states[prev_state].timeInState += Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
                 time_in_states[prev_state].endDate = t.change_date;
             }
             prev_state = t.state;
         });
 
         _.each(time_in_states, function(val,key){
+
             if (val.lastStartDate && val.endDate && val.lastStartDate > val.endDate ){
                 //This has multiple durations in state, so we want to clear out the endDate
                 val.endDate = null;
             }
             if (!val.endDate){
-                time_in_states[key].timeInState =  time_in_states[key].timeInState || 0 +  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
+                time_in_states[key].timeInState +=  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
             }
         });
         return time_in_states;

@@ -69,7 +69,6 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
 
                 if (!revisions){
-                    console.log('no revisions', this.get('FormattedID'));
                     return;
                 }
 
@@ -89,12 +88,12 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 }, this);
 
                 var start_state = this.stateList[0],
-                    end_state = this.stateList[this.stateList.length - 1],
-                    start_date = time_in_states[start_state].startDate,
-                    end_date = time_in_states[end_state].lastStartDate;
+                    end_state = this.stateList[this.stateList.length - 1];
 
-                if (start_date && end_date){
-                    this.set('total', Rally.technicalservices.util.Parser.daysBetween(end_date, start_date, this.skipWeekends));
+                if (time_in_states[start_state] && time_in_states[end_state]){
+                    var start_date = time_in_states[start_state].startDate,
+                        end_date = time_in_states[end_state].lastStartDate;
+                    this.set('total', Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends));
                 }
             },
             _getHistory: function(){
@@ -103,7 +102,6 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 if (this.get('_revisions')){
                     deferred.resolve(this.get('_revisions'));
                 }
-                console.log('getting history for ', this.get('FormattedID'));
 
                 // contains searches are case insensitive, so
                 // TODO: deal with possibility that the name of the field is in the description change

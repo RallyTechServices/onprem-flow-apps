@@ -48,10 +48,6 @@ Ext.define("feature-cycle-time", {
             pageSize: 200,
             model: cycle_model,
             fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'],
-            //filters: [{
-            //    property: stateField.name,
-            //    value: this.doneState
-            //}],
             limit: 'Infinity',
             autoLoad: true,
             listeners: {
@@ -66,25 +62,31 @@ Ext.define("feature-cycle-time", {
         var columnCfgs = [{
             text: 'Name',
             dataIndex: 'Name',
-            _csvIgnoreRender: true
+            _csvIgnoreRender: true,
+            flex: 3
         }];
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
         field.renderer = this._cycleTimeFieldRenderer;
+        field.flex = 1;
         columnCfgs.push(field);
 
         _.each(allowedValues, function(v){
             if (v.length > 0 ) {
                 var field = Rally.technicalservices.ModelBuilder.getCycleTimeField(v);
                 field.renderer = this._cycleTimeFieldRenderer;
+                field.flex = 2;
                 columnCfgs.push(field);
+
 
                 var start_field = Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(v);
                 start_field.renderer = this._dateRenderer;
+                start_field.flex = 2;
                 columnCfgs.push(start_field);
 
                 field = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(v);
                 field.renderer = this._dateRenderer;
+                field.flex = 2;
                 columnCfgs.push(field);
             }
         }, this);

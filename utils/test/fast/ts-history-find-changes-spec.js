@@ -144,15 +144,64 @@ describe("Given arrays of revisions",function() {
                  expect( time_in_states['Defined'].timeInState).toEqual(Rally.technicalservices.util.Utilities.daysBetween(first_sunday, first_saturday,false));
                  expect( time_in_states['Defined'].startDate).toEqual(first_saturday);
                  expect( time_in_states['Defined'].endDate).toEqual(first_sunday);
+                 expect( time_in_states['Defined'].lastStartDate).toEqual(first_saturday);
 
-                 expect( time_in_states['In-Progress'].timeInState).toEqual(Rally.util.DateTime.getDifference(first_monday, first_sunday,'day'));
+                 expect( time_in_states['In-Progress'].timeInState).toEqual(Rally.technicalservices.util.Utilities.daysBetween(first_monday, first_sunday,false));
                  expect( time_in_states['In-Progress'].startDate).toEqual(first_sunday);
                  expect( time_in_states['In-Progress'].endDate).toEqual(first_monday);
+                 expect( time_in_states['In-Progress'].lastStartDate).toEqual(first_sunday);
 
-                 expect( time_in_states['Completed'].timeInState).toEqual(Rally.util.DateTime.getDifference(first_tuesday, first_monday,'day'));
-                 expect( time_in_states['Accepted'].timeInState).toEqual(Rally.util.DateTime.getDifference(new Date(), first_tuesday,'day'));
+                 expect( time_in_states['Completed'].timeInState).toEqual(Rally.technicalservices.util.Utilities.daysBetween(first_tuesday, first_monday,false));
+                 expect( time_in_states['Completed'].startDate).toEqual(first_monday);
+                 expect( time_in_states['Completed'].endDate).toEqual(first_tuesday);
+                 expect( time_in_states['Completed'].lastStartDate).toEqual(first_monday);
+
+                 expect( time_in_states['Accepted'].timeInState).toEqual(Rally.technicalservices.util.Utilities.daysBetween(new Date(), first_tuesday,false));
+                 expect( time_in_states['Accepted'].startDate).toEqual(first_tuesday);
+                 expect( time_in_states['Accepted'].endDate).toEqual(null);
+                 expect( time_in_states['Accepted'].lastStartDate).toEqual(first_tuesday);
 
              });
+
+             it ('should find the cumulative time that each item is in each state', function(){
+                 var rev0 = Ext.create('mockRevision',{ ObjectID: 1, CreationDate: first_saturday,
+                     Description: "Original revision" });
+                 var rev1 = Ext.create('mockRevision',{ ObjectID: 2, CreationDate: first_sunday,
+                     Description: "RANK moved up, SCHEDULE STATE changed from [Defined] to [In-Progress]" });
+                 var rev2 = Ext.create('mockRevision',{ ObjectID: 3, CreationDate: first_monday,
+                     Description: "RANK moved down, SCHEDULE STATE changed from [In-Progress] to [Defined]" });
+                 var rev3 = Ext.create('mockRevision',{ ObjectID: 4, CreationDate: first_tuesday,
+                     Description: "RANK moved up, SCHEDULE STATE changed from [Defined] to [In-Progress]" });
+                 var rev4 = Ext.create('mockRevision',{ ObjectID: 5, CreationDate: first_wednesday,
+                     Description: "RANK moved down, SCHEDULE STATE changed from [In-Progress] to [Completed]" });
+                 var rev5 = Ext.create('mockRevision',{ ObjectID: 6, CreationDate: first_thursday,
+                     Description: "RANK moved down, SCHEDULE STATE changed from [Completed] to [Accepted]" });
+                 var rev6 = Ext.create('mockRevision',{ ObjectID: 7, CreationDate: first_friday,
+                     Description: "RANK moved up" });
+
+                 var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates([rev0,rev1,rev2,rev3,rev4,rev5,rev6],'Schedule State');
+                 expect( time_in_states['Defined'].timeInState).toEqual(2);
+                 expect( time_in_states['Defined'].startDate).toEqual(first_saturday);
+                 expect( time_in_states['Defined'].endDate).toEqual(first_tuesday);
+                 expect( time_in_states['Defined'].lastStartDate).toEqual(first_monday);
+
+                 expect( time_in_states['In-Progress'].timeInState).toEqual(2);
+                 expect( time_in_states['In-Progress'].startDate).toEqual(first_sunday);
+                 expect( time_in_states['In-Progress'].endDate).toEqual(first_wednesday);
+                 expect( time_in_states['In-Progress'].lastStartDate).toEqual(first_tuesday);
+
+                 expect( time_in_states['Completed'].timeInState).toEqual(1);
+                 expect( time_in_states['Completed'].startDate).toEqual(first_wednesday);
+                 expect( time_in_states['Completed'].endDate).toEqual(first_thursday);
+                 expect( time_in_states['Completed'].lastStartDate).toEqual(first_wednesday);
+
+                 expect( time_in_states['Accepted'].timeInState).toEqual(Rally.technicalservices.util.Utilities.daysBetween(new Date(), first_thursday,false));
+                 expect( time_in_states['Accepted'].startDate).toEqual(first_thursday);
+                 expect( time_in_states['Accepted'].endDate).toEqual(null);
+                 expect( time_in_states['Accepted'].lastStartDate).toEqual(first_thursday);
+
+             });
+
          });
     });
 });

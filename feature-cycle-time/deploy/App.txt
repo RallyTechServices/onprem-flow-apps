@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 25 2015 19:00:24 GMT-0500 (CDT) -->
+    <!--  Build Date: Thu Jun 25 2015 20:42:46 GMT-0500 (CDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 25 2015 19:00:24 GMT-0500 (CDT)";
-        var CHECKSUM = 65355486144;
+        var APP_BUILD_DATE = "Thu Jun 25 2015 20:42:46 GMT-0500 (CDT)";
+        var CHECKSUM = 64927396115;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -904,25 +904,26 @@ Ext.define('Rally.technicalservices.util.Parser', {
         _.each(transitions, function(t){
 
             if (!time_in_states[t.state]){
-                time_in_states[t.state] = {};
-                time_in_states[t.state].firstStartDate = t.change_date;
+                time_in_states[t.state] = {timeInState: 0};
+                time_in_states[t.state].startDate = t.change_date;
             }
             time_in_states[t.state].lastStartDate = t.change_date;
 
             if (prev_state) {
-                time_in_states[prev_state].timeInState = time_in_states[prev_state] || 0 + Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
+                time_in_states[prev_state].timeInState += Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
                 time_in_states[prev_state].endDate = t.change_date;
             }
             prev_state = t.state;
         });
 
         _.each(time_in_states, function(val,key){
+
             if (val.lastStartDate && val.endDate && val.lastStartDate > val.endDate ){
                 //This has multiple durations in state, so we want to clear out the endDate
                 val.endDate = null;
             }
             if (!val.endDate){
-                time_in_states[key].timeInState =  time_in_states[key].timeInState || 0 +  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
+                time_in_states[key].timeInState +=  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
             }
         });
         return time_in_states;
@@ -1269,7 +1270,6 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
 
                 if (!revisions){
-                    console.log('no revisions', this.get('FormattedID'));
                     return;
                 }
 
@@ -1289,12 +1289,12 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 }, this);
 
                 var start_state = this.stateList[0],
-                    end_state = this.stateList[this.stateList.length - 1],
-                    start_date = time_in_states[start_state].startDate,
-                    end_date = time_in_states[end_state].lastStartDate;
+                    end_state = this.stateList[this.stateList.length - 1];
 
-                if (start_date && end_date){
-                    this.set('total', Rally.technicalservices.util.Parser.daysBetween(end_date, start_date, this.skipWeekends));
+                if (time_in_states[start_state] && time_in_states[end_state]){
+                    var start_date = time_in_states[start_state].startDate,
+                        end_date = time_in_states[end_state].lastStartDate;
+                    this.set('total', Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends));
                 }
             },
             _getHistory: function(){
@@ -1303,7 +1303,6 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 if (this.get('_revisions')){
                     deferred.resolve(this.get('_revisions'));
                 }
-                console.log('getting history for ', this.get('FormattedID'));
 
                 // contains searches are case insensitive, so
                 // TODO: deal with possibility that the name of the field is in the description change
@@ -1396,10 +1395,6 @@ Ext.define("feature-cycle-time", {
             pageSize: 200,
             model: cycle_model,
             fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'],
-            //filters: [{
-            //    property: stateField.name,
-            //    value: this.doneState
-            //}],
             limit: 'Infinity',
             autoLoad: true,
             listeners: {
@@ -1414,25 +1409,31 @@ Ext.define("feature-cycle-time", {
         var columnCfgs = [{
             text: 'Name',
             dataIndex: 'Name',
-            _csvIgnoreRender: true
+            _csvIgnoreRender: true,
+            flex: 3
         }];
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
         field.renderer = this._cycleTimeFieldRenderer;
+        field.flex = 1;
         columnCfgs.push(field);
 
         _.each(allowedValues, function(v){
             if (v.length > 0 ) {
                 var field = Rally.technicalservices.ModelBuilder.getCycleTimeField(v);
                 field.renderer = this._cycleTimeFieldRenderer;
+                field.flex = 2;
                 columnCfgs.push(field);
+
 
                 var start_field = Rally.technicalservices.ModelBuilder.getCycleTimeStartDateField(v);
                 start_field.renderer = this._dateRenderer;
+                start_field.flex = 2;
                 columnCfgs.push(start_field);
 
                 field = Rally.technicalservices.ModelBuilder.getCycleTimeEndDateField(v);
                 field.renderer = this._dateRenderer;
+                field.flex = 2;
                 columnCfgs.push(field);
             }
         }, this);
