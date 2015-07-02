@@ -47,7 +47,7 @@ Ext.define("feature-cycle-time", {
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
-            fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'],
+            fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID','PreliminaryEstimate'],
             limit: 'Infinity',
             autoLoad: true,
             listeners: {
@@ -64,6 +64,9 @@ Ext.define("feature-cycle-time", {
             dataIndex: 'Name',
             _csvIgnoreRender: true,
             flex: 3
+        },{
+            text: 'Preliminary Estimate',
+            dataIndex: 'PreliminaryEstimate'
         }];
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
