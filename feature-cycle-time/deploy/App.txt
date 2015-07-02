@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Jun 25 2015 20:42:46 GMT-0500 (CDT) -->
+    <!--  Build Date: Thu Jul 02 2015 16:29:54 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Jun 25 2015 20:42:46 GMT-0500 (CDT)";
-        var CHECKSUM = 64927396115;
+        var APP_BUILD_DATE = "Thu Jul 02 2015 16:29:54 GMT-0600 (MDT)";
+        var CHECKSUM = 65222905008;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -1394,7 +1394,7 @@ Ext.define("feature-cycle-time", {
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
-            fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'],
+            fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID','PreliminaryEstimate'],
             limit: 'Infinity',
             autoLoad: true,
             listeners: {
@@ -1411,6 +1411,9 @@ Ext.define("feature-cycle-time", {
             dataIndex: 'Name',
             _csvIgnoreRender: true,
             flex: 3
+        },{
+            text: 'Preliminary Estimate',
+            dataIndex: 'PreliminaryEstimate'
         }];
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
