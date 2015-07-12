@@ -5,18 +5,24 @@ Ext.define("feature-cycle-time", {
     defaults: { margin: 10 },
     config: {
         defaultSettings: {
-            typePath: 'portfolioitem/feature',
+            typePath: 'PortfolioItem/Feature',
             stateField: 'State',
-            doneState: 'Completed'
+            displayFields: ['Name','PreliminaryEstimate']
         }
     },
     items: [
+        {xtype:'container',itemId:'settings_box'},
         {xtype:'container',itemId:'ct_header', layout: {type: 'hbox'}},
         {xtype:'container',itemId:'ct_body'},
         {xtype:'tsinfolink'}
     ],
     launch: function() {
-        this._initApp();
+
+        if (this.isExternal()){
+            this.showSettings(this.config);
+        } else {
+            this.onSettingsUpdate(this.getSettings());
+        }
     },
     _buildGrid: function(){
 
@@ -41,14 +47,19 @@ Ext.define("feature-cycle-time", {
             stateField = this.field,
             allowedValues = this._getStatesOfInterest(start_state, end_state, this.allowedValues);
 
-        var cycle_model = Rally.technicalservices.ModelBuilder.build(model, allowedValues, stateField.name);
+        var cycle_model = Rally.technicalservices.ModelBuilder.build(model, allowedValues, stateField.name, stateField.displayName);
         this.logger.log('model', cycle_model);
-
+        var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(this.getSetting('displayFields'));
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
-            fetch: ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID','PreliminaryEstimate'],
+            fetch: fetch,
             limit: 'Infinity',
+            context: {
+                project: this.getContext().getProject()._ref,
+                projectScopeUp: this.getContext().getProjectScopeUp(),
+                projectScopeDown: this.getContext().getProjectScopeDown()
+            },
             autoLoad: true,
             listeners: {
                 load: function(store, records){
@@ -59,15 +70,20 @@ Ext.define("feature-cycle-time", {
             }
         });
 
-        var columnCfgs = [{
-            text: 'Name',
-            dataIndex: 'Name',
-            _csvIgnoreRender: true,
-            flex: 3
-        },{
-            text: 'Preliminary Estimate',
-            dataIndex: 'PreliminaryEstimate'
-        }];
+        var columnCfgs = [];  //[{
+        //    text: 'Name',
+        //    dataIndex: 'Name',
+        //    _csvIgnoreRender: true,
+        //    flex: 3
+        //}];
+
+        _.each(this.getSetting('displayFields'),function(field){
+            var displayName = field;
+            if (cycle_model && cycle_model.getField(field)){
+                displayName = cycle_model.getField(field).displayName;
+            }
+            columnCfgs.push({text: displayName, dataIndex: field});
+        }, this);
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
         field.renderer = this._cycleTimeFieldRenderer;
@@ -129,11 +145,15 @@ Ext.define("feature-cycle-time", {
     },
     _initApp: function(){
 
+        this._loadAllowedValuesForState(this.getSetting('typePath'),this.getSetting('stateField'));
+    },
+    _loadAllowedValuesForState: function(modelName, stateField){
         Rally.data.ModelFactory.getModel({
-            type: this.getSetting('typePath'),
+            type: modelName,
             scope: this,
             success: function(model) {
-                var field = model.getField(this.getSetting('stateField'));
+                var field = model.getField(stateField);
+
                 if (field){
                     field.getAllowedValueStore().load({
                         scope: this,
@@ -147,7 +167,7 @@ Ext.define("feature-cycle-time", {
                                 var allowedValues = _.map(records, function (r) {
                                     return r.get('StringValue')
                                 });
-                                this._initComponents(allowedValues);
+                                this._initComponents(allowedValues, modelName);
                                 this.model = model;
                                 this.allowedValues = allowedValues;
                                 this.field = field;
@@ -155,7 +175,7 @@ Ext.define("feature-cycle-time", {
 
                             } else {
                                 Rally.ui.notify.Notifier.showError({message: Ext.String.format('Unable to load allowed values for state field "{0}".  Error(s): [{1}]',
-                                    this.getSetting('stateField'),
+                                    stateField,
                                     operation.error.errors.join(',')
                                 )});
                             }
@@ -163,14 +183,14 @@ Ext.define("feature-cycle-time", {
                     });
                 } else {
                     Rally.ui.notify.Notifier.showError({message: Ext.String.format('Unable to load allowed values for state field "{0}". The field does not exist on the PortfolioItem type model.',
-                        this.getSetting('stateField')
+                        stateField
                     )});
                 }
             }
         });
     },
-    _initComponents: function(allowedValues){
-        this.logger.log('_initApp', this.getSetting('typePath'), this.getSetting('stateField'));
+    _initComponents: function(allowedValues, modelName){
+        this.logger.log('_initApp', modelName);
 
         var header_ct = this.down('#ct_header');
 
@@ -196,7 +216,6 @@ Ext.define("feature-cycle-time", {
             stateId: this.getContext().getScopedStateId('cb-end'),
             store: allowedValues
         });
-        //cb_end.setValue(allowedValues.slice(-1)[0]);
 
         header_ct.add({
             xtype: 'rallybutton',
@@ -218,6 +237,126 @@ Ext.define("feature-cycle-time", {
             }
         });
 
+    },
+    isExternal: function(){
+        return typeof(this.getAppId()) == 'undefined';
+    },
+    //showSettings:  Override
+    showSettings: function(options) {
+        this._appSettings = Ext.create('Rally.app.AppSettings', Ext.apply({
+            fields: this.getSettingsFields(),
+            settings: this.getSettings(),
+            defaultSettings: this.getDefaultSettings(),
+            context: this.getContext(),
+            settingsScope: this.settingsScope,
+            autoScroll: true
+        }, options));
+
+        this._appSettings.on('cancel', this._hideSettings, this);
+        this._appSettings.on('save', this._onSettingsSaved, this);
+        if (this.isExternal()){
+            if (this.down('#settings_box').getComponent(this._appSettings.id)===undefined){
+                this.down('#settings_box').add(this._appSettings);
+            }
+        } else {
+            this.hide();
+            this.up().add(this._appSettings);
+        }
+        return this._appSettings;
+    },
+    _onSettingsSaved: function(settings){
+        Ext.apply(this.settings, settings);
+        this._hideSettings();
+        this.onSettingsUpdate(settings);
+
+    },
+    //onSettingsUpdate:  Override
+    onSettingsUpdate: function (settings){
+        Ext.apply(this, settings);
+        this.logger.log('onSettingsUpdate', settings);
+        this._initApp(settings);
+    },
+
+    getSettingsFields: function() {
+
+        var filters = Rally.data.wsapi.Filter.or([Ext.create('Rally.data.wsapi.Filter',{
+            property: 'TypePath',
+            value: 'HierarchicalRequirement'
+        }),Ext.create('Rally.data.wsapi.Filter', {
+            property: 'TypePath',
+            operator: 'contains',
+            value: 'PortfolioItem/'
+        })]);
+
+
+
+        var me = this,
+            current_model = this.getSetting('typePath'),
+            current_state_field = this.getSetting('stateField');
+
+        return [
+           {
+                name: 'typePath',
+                xtype: 'rallycombobox',
+                storeConfig: {
+                    model: 'TypeDefinition',
+                    fetch: ['TypePath', 'DisplayName'],
+                    filters: filters,
+                    remoteSort: false,
+                    remoteFilter: true
+                },
+                disabled: true,
+                valueField: 'TypePath',
+                displayField: 'DisplayName',
+                labelAlign: 'right',
+                fieldLabel: 'Model Type',
+                bubbleEvents: ['change','ready'],
+                listeners: {
+                    ready: function(cb){
+                        cb.setDisabled(false);
+                    }
+                }
+            },{
+                name: 'stateField',
+                xtype: 'tsdropdownfieldcombobox',
+                itemId: 'stateField_setting',
+                fieldLabel: 'State Field',
+                labelAlign: 'right',
+                model: current_model,
+                disabled: true,
+                handlesEvents: {
+                    change: function(type_cb){
+                        this.setDisabled(false);
+                        this.refreshWithNewModelType(type_cb.getValue());
+                    },
+                    ready: function(type_cb){
+                        this.refreshWithNewModelType(type_cb.getValue());
+                        this.setValue(current_state_field);
+                        this.setDisabled(false);
+                    }
+                }
+            },{
+                name: 'displayFields',
+                xtype: 'rallyfieldpicker',
+                itemId: 'displayFields_setting',
+                fieldLabel: 'Display Fields',
+                alwaysSelectedValues: ['Name'],
+                labelAlign: 'right',
+                modelTypes: [current_model],
+                disabled: true,
+                handlesEvents: {
+                    change: function(type_cb){
+                        this.setDisabled(false);
+                        this.refreshWithNewModelTypes([type_cb.getValue()]);
+                    },
+                    ready: function(type_cb){
+                        this.refreshWithNewModelTypes([type_cb.getValue()]);
+                        this.setDisabled(false);
+                    }
+                }
+            }
+        ];
     }
 
- });
+
+});

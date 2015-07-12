@@ -14,7 +14,6 @@ Ext.define('Rally.technicalservices.util.Parser', {
      * new_value: {String} the value the field changed into
      */
     findValuesForField: function(field_name, text_string){
-        console.log('findValuesForField',field_name,text_string);
         var description = text_string;
         var new_value = null;
         var original_value = null;
@@ -68,7 +67,6 @@ Ext.define('Rally.technicalservices.util.Parser', {
 
         Ext.Array.each(revisions, function(revision){
             var values = this.findValuesForField(field_name, revision.get('Description'));
-            console.log(values);
             if ( !start_revision && values.new_value == state ) {
                 start_revision = revision;
             }
@@ -91,7 +89,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
             matching_revisions = [ start_revision, end_revision];
         }
 
-        console.log('matching', matching_revisions)
+
         return matching_revisions;
 
     },
