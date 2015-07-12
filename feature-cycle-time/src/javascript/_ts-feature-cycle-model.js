@@ -16,7 +16,7 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
         return {dataIndex: 'total', text: Ext.String.format('Total days ({0} to {1})',states[0], states[states.length-1])};
     },
 
-    build: function(model, states, state_field ){
+    build: function(model, states, state_field , state_field_display_name){
 
         var fields = [];
         _.each(states, function(s){
@@ -52,6 +52,7 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
             extend: model,
             fields: fields,
             stateField: state_field,
+            stateFieldDisplayName: state_field_display_name,
             stateList: states,
             skipWeekends: false,
 
@@ -66,14 +67,12 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 });
             },
             _calculateHistory: function(revisions){
-
-
                 if (!revisions){
                     return;
                 }
 
                 this.set('_revisions', revisions);
-                var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates(revisions, this.stateField, this.skipWeekends);
+                var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates(revisions, this.stateFieldDisplayName, this.skipWeekends);
 
                 _.each(time_in_states, function(obj, state){
                     if (state.length > 0 && Ext.Array.contains(this.stateList, state)) {
@@ -109,7 +108,7 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
                 var state_selection_filters = Ext.create('Rally.data.wsapi.Filter',{
                     property:'Description',
                     operator:'contains',
-                    value: Ext.util.Format.uppercase(this.stateField)
+                    value: Ext.util.Format.uppercase(this.stateFieldDisplayName)
                 }).or(Ext.create('Rally.data.wsapi.Filter',{
                     property:'Description',
                     value:'Original revision'
