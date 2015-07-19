@@ -357,6 +357,4 @@ Ext.define("feature-cycle-time", {
             }
         ];
     }
-
-
 });

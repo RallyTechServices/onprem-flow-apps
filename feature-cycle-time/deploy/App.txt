@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Jul 12 2015 14:32:57 GMT-0600 (MDT) -->
+    <!--  Build Date: Sat Jul 18 2015 18:07:03 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Jul 12 2015 14:32:57 GMT-0600 (MDT)";
-        var CHECKSUM = 81529118713;
+        var APP_BUILD_DATE = "Sat Jul 18 2015 18:07:03 GMT-0600 (MDT)";
+        var CHECKSUM = 85081352685;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -896,8 +896,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
         var transitions = this.getStateAttainments(revisions, field_name),
             time_in_states = {},
             prev_state = null,
-            skipWeekends = skipWeekends || false,
-            granularity = 'day';
+            skipWeekends = skipWeekends || false;
 
         _.each(transitions, function(t){
 
@@ -908,7 +907,7 @@ Ext.define('Rally.technicalservices.util.Parser', {
             time_in_states[t.state].lastStartDate = t.change_date;
 
             if (prev_state) {
-                time_in_states[prev_state].timeInState += Rally.technicalservices.util.Utilities.daysBetween(t.change_date, time_in_states[prev_state].lastStartDate, skipWeekends);
+                time_in_states[prev_state].timeInState += Rally.technicalservices.util.Utilities.daysBetweenWithFraction(time_in_states[prev_state].lastStartDate, t.change_date, skipWeekends);
                 time_in_states[prev_state].endDate = t.change_date;
             }
             prev_state = t.state;
@@ -916,12 +915,13 @@ Ext.define('Rally.technicalservices.util.Parser', {
 
         _.each(time_in_states, function(val,key){
 
-            if (val.lastStartDate && val.endDate && val.lastStartDate > val.endDate ){
-                //This has multiple durations in state, so we want to clear out the endDate
+
+           if (val.lastStartDate && val.endDate && val.lastStartDate >= val.endDate ){
+
                 val.endDate = null;
             }
             if (!val.endDate){
-                time_in_states[key].timeInState +=  Rally.technicalservices.util.Utilities.daysBetween(new Date(), val.lastStartDate, skipWeekends);
+                 time_in_states[key].timeInState +=  Rally.technicalservices.util.Utilities.daysBetweenWithFraction(val.lastStartDate, new Date(), skipWeekends);
             }
         });
         return time_in_states;
@@ -935,6 +935,34 @@ Ext.define('Rally.technicalservices.util.Utilities', {
             result.push(hash[key]);
         }
         return result;
+    },
+    daysBetweenWithFraction: function(begin_date_js,end_date_js,skip_weekends){
+
+        var days_between = Rally.technicalservices.util.Utilities.daysBetween(begin_date_js, end_date_js, skip_weekends);
+
+        if ( typeof(begin_date_js) == "string" ) {
+           begin_date_js = Rally.util.DateTime.fromIsoString(begin_date_js);
+        }
+        if ( typeof(end_date_js) == "string" ) {
+            end_date_js = Rally.util.DateTime.fromIsoString(end_date_js);
+        }
+
+        var end_date_beginning_of_day = new Date(Ext.clone(end_date_js).setHours(0,0,0,0)),
+            begin_date_beginning_of_day = new Date(Ext.clone(begin_date_js).setHours(0,0,0,0)),
+            add_minutes = 0,
+            delta_minutes = 0;
+
+        if (this.isWeekday(end_date_js)) {
+            add_minutes = Rally.util.DateTime.getDifference(end_date_js, end_date_beginning_of_day, 'minute');
+        }
+        if (this.isWeekday(begin_date_js)) {
+            delta_minutes = Rally.util.DateTime.getDifference(begin_date_js, begin_date_beginning_of_day, 'minute');
+        }
+        var min = days_between * 1440 + add_minutes - delta_minutes;
+        if (min > 0){
+            return Math.max((min/1440).toFixed(2),0.01);
+        }
+        return min;
     },
     daysBetween: function(begin_date_js,end_date_js,skip_weekends){
 
@@ -1290,8 +1318,8 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
                 if (time_in_states[start_state] && time_in_states[end_state]){
                     var start_date = time_in_states[start_state].startDate,
-                        end_date = time_in_states[end_state].lastStartDate;
-                    this.set('total', Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends));
+                        end_date = time_in_states[end_state].startDate;
+                    this.set('total', Rally.technicalservices.util.Utilities.daysBetweenWithFraction(end_date, start_date, this.skipWeekends));
                 }
             },
             _getHistory: function(){
@@ -1746,8 +1774,6 @@ Ext.define("feature-cycle-time", {
             }
         ];
     }
-
-
 });
 
             

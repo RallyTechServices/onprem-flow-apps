@@ -7,6 +7,34 @@ Ext.define('Rally.technicalservices.util.Utilities', {
         }
         return result;
     },
+    daysBetweenWithFraction: function(begin_date_js,end_date_js,skip_weekends){
+
+        var days_between = Rally.technicalservices.util.Utilities.daysBetween(begin_date_js, end_date_js, skip_weekends);
+
+        if ( typeof(begin_date_js) == "string" ) {
+           begin_date_js = Rally.util.DateTime.fromIsoString(begin_date_js);
+        }
+        if ( typeof(end_date_js) == "string" ) {
+            end_date_js = Rally.util.DateTime.fromIsoString(end_date_js);
+        }
+
+        var end_date_beginning_of_day = new Date(Ext.clone(end_date_js).setHours(0,0,0,0)),
+            begin_date_beginning_of_day = new Date(Ext.clone(begin_date_js).setHours(0,0,0,0)),
+            add_minutes = 0,
+            delta_minutes = 0;
+
+        if (this.isWeekday(end_date_js)) {
+            add_minutes = Rally.util.DateTime.getDifference(end_date_js, end_date_beginning_of_day, 'minute');
+        }
+        if (this.isWeekday(begin_date_js)) {
+            delta_minutes = Rally.util.DateTime.getDifference(begin_date_js, begin_date_beginning_of_day, 'minute');
+        }
+        var min = days_between * 1440 + add_minutes - delta_minutes;
+        if (min > 0){
+            return Math.max((min/1440).toFixed(2),0.01);
+        }
+        return min;
+    },
     daysBetween: function(begin_date_js,end_date_js,skip_weekends){
 
         if ( typeof(begin_date_js) == "string" ) {
