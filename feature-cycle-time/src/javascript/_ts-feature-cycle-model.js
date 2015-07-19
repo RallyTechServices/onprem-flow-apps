@@ -91,8 +91,8 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
                 if (time_in_states[start_state] && time_in_states[end_state]){
                     var start_date = time_in_states[start_state].startDate,
-                        end_date = time_in_states[end_state].lastStartDate;
-                    this.set('total', Rally.technicalservices.util.Utilities.daysBetween(end_date, start_date, this.skipWeekends));
+                        end_date = time_in_states[end_state].startDate;
+                    this.set('total', Rally.technicalservices.util.Utilities.daysBetweenWithFraction(end_date, start_date, this.skipWeekends));
                 }
             },
             _getHistory: function(){
