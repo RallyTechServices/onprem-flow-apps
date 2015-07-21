@@ -213,6 +213,59 @@ describe("Given arrays of revisions",function() {
 
              });
 
+             it ('should find the cumulative time that each item is in each state with data', function(){
+
+                var rev0_date = new Date(2015,07,7,6,55,17),
+                    rev1_date = new Date(2015,07,08,5,0,0),
+                    rev2_date = new Date(2015,07,14,7,15,16),
+                    rev3_date = new Date(2015,07,15,5,0,0),
+                    rev4_date = new Date(2015,07,16,5,0,0),
+                    rev5_date = new Date(2015,07,20,7,12,49);
+
+
+                 var rev0 = Ext.create('mockRevision',{ ObjectID: 1, CreationDate: rev0_date,
+                     Description: "Original revision" });
+                 var rev1 = Ext.create('mockRevision',{ ObjectID: 2, CreationDate: rev1_date,
+                     Description: "NAME changed from [A] to [B]" });
+                 var rev2 = Ext.create('mockRevision',{ ObjectID: 3, CreationDate: rev2_date,
+                     Description: "RANK moved up, STATE changed from [Initial Infra Requirements] to [Hosting Services], STATE CHANGED DATE changed from [Tue Jul 07 06:55:17 MDT 2015] to [Tue Jul 14 07:15:16 MDT 2015]" });
+                 var rev3 = Ext.create('mockRevision',{ ObjectID: 4, CreationDate: rev3_date,
+                     Description: "NAME changed from [B] to [C]" });
+                 var rev4 = Ext.create('mockRevision',{ ObjectID: 5, CreationDate: rev4_date,
+                     Description: "NAME changed from [C] to [D]" });
+                 var rev5 = Ext.create('mockRevision',{ ObjectID: 6, CreationDate: rev5_date,
+                     Description: "RANK moved down, STATE changed from [Hosting Services] to [Completed], STATE CHANGED DATE changed from [Tue Jul 14 07:15:16 MDT 2015] to [Mon Jul 20 07:12:49 MDT 2015]" });
+
+                 var time_in_states = Rally.technicalservices.util.Parser.getTimeInStates([rev0,rev1,rev2,rev3,rev4,rev5],'State', true);
+                 expect( time_in_states['Initial Infra Requirements'].timeInState).toEqual(5.01);
+                 expect( time_in_states['Initial Infra Requirements'].startDate).toEqual(rev0_date);
+                 expect( time_in_states['Initial Infra Requirements'].endDate).toEqual(rev2_date);
+                 expect( time_in_states['Initial Infra Requirements'].lastStartDate).toEqual(rev0_date);
+                 expect( time_in_states['Initial Infra Requirements'].timeInState).toEqual(
+                     Rally.technicalservices.util.Utilities.daysBetweenWithFraction(rev0_date,rev2_date, true)
+                 );
+
+                 expect( time_in_states['Hosting Services'].timeInState).toEqual(4);
+                 expect( time_in_states['Hosting Services'].startDate).toEqual(rev2_date);
+                 expect( time_in_states['Hosting Services'].endDate).toEqual(rev5_date);
+                 expect( time_in_states['Hosting Services'].lastStartDate).toEqual(rev2_date);
+
+                 expect( time_in_states['Hosting Services'].timeInState).toEqual(
+                     Rally.technicalservices.util.Utilities.daysBetweenWithFraction(rev2_date, rev5_date,true)
+                 );
+
+                 expect( time_in_states['Completed'].startDate).toEqual(rev5_date);
+                 expect( time_in_states['Completed'].endDate).toEqual(undefined);
+                 expect( time_in_states['Completed'].lastStartDate).toEqual(rev5_date);
+
+                 expect( time_in_states['Completed'].timeInState).toEqual(
+                     Rally.technicalservices.util.Utilities.daysBetweenWithFraction(rev5_date, new Date(),true)
+                 );
+
+
+             });
+
+
          });
     });
 });
