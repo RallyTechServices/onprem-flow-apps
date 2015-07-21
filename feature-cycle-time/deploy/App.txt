@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sat Jul 18 2015 18:07:03 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Jul 21 2015 10:05:18 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sat Jul 18 2015 18:07:03 GMT-0600 (MDT)";
-        var CHECKSUM = 85081352685;
+        var APP_BUILD_DATE = "Tue Jul 21 2015 10:05:18 GMT-0600 (MDT)";
+        var CHECKSUM = 85144770582;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -960,9 +960,11 @@ Ext.define('Rally.technicalservices.util.Utilities', {
         }
         var min = days_between * 1440 + add_minutes - delta_minutes;
         if (min > 0){
-            return Math.max((min/1440).toFixed(2),0.01);
+            min = Math.max(min/1440,0.01);
+        } else {
+            min = 0;
         }
-        return min;
+        return Number(min.toFixed(2));
     },
     daysBetween: function(begin_date_js,end_date_js,skip_weekends){
 

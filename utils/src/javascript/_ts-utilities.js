@@ -31,9 +31,11 @@ Ext.define('Rally.technicalservices.util.Utilities', {
         }
         var min = days_between * 1440 + add_minutes - delta_minutes;
         if (min > 0){
-            return Math.max((min/1440).toFixed(2),0.01);
+            min = Math.max(min/1440,0.01);
+        } else {
+            min = 0;
         }
-        return min;
+        return Number(min.toFixed(2));
     },
     daysBetween: function(begin_date_js,end_date_js,skip_weekends){
 
