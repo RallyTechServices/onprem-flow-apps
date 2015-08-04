@@ -49,7 +49,12 @@ Ext.define("feature-cycle-time", {
 
         var cycle_model = Rally.technicalservices.ModelBuilder.build(model, allowedValues, stateField.name, stateField.displayName);
         this.logger.log('model', cycle_model);
-        var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(this.getSetting('displayFields'));
+        var display_fields = this.getSetting('displayFields');
+        if (!(display_fields instanceof Array)){
+            display_fields = display_fields.split(',');
+        }
+
+        var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
@@ -77,7 +82,7 @@ Ext.define("feature-cycle-time", {
         //    flex: 3
         //}];
 
-        _.each(this.getSetting('displayFields'),function(field){
+        _.each(display_fields,function(field){
             var displayName = field;
             if (cycle_model && cycle_model.getField(field)){
                 displayName = cycle_model.getField(field).displayName;

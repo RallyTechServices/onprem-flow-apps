@@ -261,11 +261,7 @@ describe("Given arrays of revisions",function() {
                  expect( time_in_states['Completed'].timeInState).toEqual(
                      Rally.technicalservices.util.Utilities.daysBetweenWithFraction(rev5_date, new Date(),true)
                  );
-
-
              });
-
-
          });
     });
 });

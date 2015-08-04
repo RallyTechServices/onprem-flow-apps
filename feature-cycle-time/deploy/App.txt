@@ -3,11 +3,11 @@
 <head>
     <title>Feature Cycle Time</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Jul 21 2015 10:05:18 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Aug 04 2015 10:00:22 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Jul 21 2015 10:05:18 GMT-0600 (MDT)";
-        var CHECKSUM = 85144770582;
+        var APP_BUILD_DATE = "Tue Aug 04 2015 10:00:22 GMT-0600 (MDT)";
+        var CHECKSUM = 85538814589;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -1405,8 +1405,8 @@ Ext.define('Rally.technicalservices.DropdownFieldComboBox',{
     _isNotHidden: function(field) {
         var allowed_non_string_fields =['State','ScheduleState','InvestmentCategory'];
         var hidden = true;
-        if (!field.hidden && field.attributeDefinition && field.attributeDefinition.Constrained){
-            if (field.attributeDefinition.AttributeType == 'STRING'){
+        if (!field.hidden && field.attributeDefinition ){
+            if (field.attributeDefinition.AttributeType == 'STRING' && field.attributeDefinition.Constrained){
                 hidden = false;
             }
             if (Ext.Array.contains(allowed_non_string_fields, field.name)){
@@ -1468,7 +1468,12 @@ Ext.define("feature-cycle-time", {
 
         var cycle_model = Rally.technicalservices.ModelBuilder.build(model, allowedValues, stateField.name, stateField.displayName);
         this.logger.log('model', cycle_model);
-        var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(this.getSetting('displayFields'));
+        var display_fields = this.getSetting('displayFields');
+        if (!(display_fields instanceof Array)){
+            display_fields = display_fields.split(',');
+        }
+
+        var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
@@ -1496,7 +1501,7 @@ Ext.define("feature-cycle-time", {
         //    flex: 3
         //}];
 
-        _.each(this.getSetting('displayFields'),function(field){
+        _.each(display_fields,function(field){
             var displayName = field;
             if (cycle_model && cycle_model.getField(field)){
                 displayName = cycle_model.getField(field).displayName;
