@@ -1,5 +1,9 @@
 #Feature Cycle Time
 
+<div>Bare bones Time-in-State App that parses Revision History to get state transitions and durations and displays them in a grid with exportable. &nbsp;Configurable model types (Portfolio Items or Stories), State field and Display fields. &nbsp;</div>
+
+
+
 ## Development Notes
 
 ### First Load
