@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Feature Cycle Time</title>
+    <title>Artifact Time in State</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 04 2015 10:00:23 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Aug 11 2015 08:14:19 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 04 2015 10:00:23 GMT-0600 (MDT)";
+        var APP_BUILD_DATE = "Tue Aug 11 2015 08:14:19 GMT-0600 (MDT)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -16,8 +16,8 @@
         Rally.onReady(function() {
             
             
-               Rally.launchApp('feature-cycle-time', {
-                   name: 'Feature Cycle Time'
+               Rally.launchApp('time-in-state', {
+                   name: 'Artifact Time in State'
                });
         });
     </script>
@@ -46,6 +46,9 @@
     border-left-width: 1px;
     border-left-color: #e0e0e0;
     text-align: center;
+}
+.warning {
+    color: #cc0000;
 }
     </style>
 

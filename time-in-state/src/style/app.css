@@ -21,3 +21,6 @@
     border-left-color: #e0e0e0;
     text-align: center;
 }
+.warning {
+    color: #cc0000;
+}
