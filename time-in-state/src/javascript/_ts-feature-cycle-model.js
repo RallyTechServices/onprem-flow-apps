@@ -58,13 +58,19 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
 
             calculate: function(){
+                var deferred = Ext.create('Deft.Deferred');
                 this._getHistory().then({
                     scope: this,
-                    success: this._calculateHistory,
+                    success: function(records){
+                        this._calculateHistory(records)
+                        deferred.resolve();
+                    },
                     failure: function(operation){
-                        Rally.ui.notify.Notifier.showError({message: 'Error getting revision history: ' + operation.error.errors.join(',')});
+                        Rally.ui.notify.Notifier.showError({message: 'Error getting revision history for ' + this.get('FormattedID') + ': ' + operation.error.errors.join(',')});
+                        deferred.resolve();
                     }
                 });
+                return deferred;
             },
             _calculateHistory: function(revisions){
                 if (!revisions){

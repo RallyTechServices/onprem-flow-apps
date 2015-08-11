@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Feature Cycle Time</title>
+    <title>Artifact Time in State</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 04 2015 10:00:22 GMT-0600 (MDT) -->
+    <!--  Build Date: Tue Aug 11 2015 08:14:18 GMT-0600 (MDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 04 2015 10:00:22 GMT-0600 (MDT)";
-        var CHECKSUM = 85538814589;
+        var APP_BUILD_DATE = "Tue Aug 11 2015 08:14:18 GMT-0600 (MDT)";
+        var CHECKSUM = 89068677078;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -1287,13 +1287,19 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
 
             calculate: function(){
+                var deferred = Ext.create('Deft.Deferred');
                 this._getHistory().then({
                     scope: this,
-                    success: this._calculateHistory,
+                    success: function(records){
+                        this._calculateHistory(records)
+                        deferred.resolve();
+                    },
                     failure: function(operation){
-                        Rally.ui.notify.Notifier.showError({message: 'Error getting revision history: ' + operation.error.errors.join(',')});
+                        Rally.ui.notify.Notifier.showError({message: 'Error getting revision history for ' + this.get('FormattedID') + ': ' + operation.error.errors.join(',')});
+                        deferred.resolve();
                     }
                 });
+                return deferred;
             },
             _calculateHistory: function(revisions){
                 if (!revisions){
@@ -1417,7 +1423,7 @@ Ext.define('Rally.technicalservices.DropdownFieldComboBox',{
     }
 });
 
-Ext.define("feature-cycle-time", {
+Ext.define("time-in-state", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
@@ -1474,6 +1480,7 @@ Ext.define("feature-cycle-time", {
         }
 
         var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
+
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
@@ -1483,23 +1490,35 @@ Ext.define("feature-cycle-time", {
                 project: this.getContext().getProject()._ref,
                 projectScopeUp: this.getContext().getProjectScopeUp(),
                 projectScopeDown: this.getContext().getProjectScopeDown()
-            },
-            autoLoad: true,
-            listeners: {
-                load: function(store, records){
-                    _.each(records, function(r){
-                        r.calculate();
-                    });
-                }
             }
         });
+        store.load({
+                scope: this,
+                callback: function(records, operation, success){
+                    this.messages = [];
+                    var num_items = store.getTotalCount();
+                    this.messages.push(Ext.String.format('<div class="warning">Loading Revision History for {0} items....</div>', num_items));
+                    this._updateMessages();
+                    if (success){
+                        var promises = [];
+                        _.each(records, function(r){
+                            promises.push(r.calculate());
+                        });
+                        Deft.Promise.all(promises).then({
+                            scope: this,
+                            success: function(){
+                                this.messages.pop();
+                                this.messages.push(Ext.String.format('Revision history for all {0} artifacts has been loaded and time in state has been populated.', num_items));
+                                this._updateMessages();
+                            }
+                        });
+                    } else {
+                        Rally.ui.notify.Notifier.showError({message: 'Error loading artifact records: ' + operation.error.errors.join(',')});
+                    }
+                }
+        });
 
-        var columnCfgs = [];  //[{
-        //    text: 'Name',
-        //    dataIndex: 'Name',
-        //    _csvIgnoreRender: true,
-        //    flex: 3
-        //}];
+        var columnCfgs = [];
 
         _.each(display_fields,function(field){
             var displayName = field;
@@ -1661,6 +1680,16 @@ Ext.define("feature-cycle-time", {
             }
         });
 
+        header_ct.add({
+            xtype: 'container',
+            flex: 1,
+            itemId: 'ct-messages'
+        });
+
+    },
+    _updateMessages: function(){
+        var html = this.messages.join('');
+        this.down('#ct-messages').update(html);
     },
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
@@ -1784,8 +1813,8 @@ Ext.define("feature-cycle-time", {
 });
 
             
-               Rally.launchApp('feature-cycle-time', {
-                   name: 'Feature Cycle Time'
+               Rally.launchApp('time-in-state', {
+                   name: 'Artifact Time in State'
                });
         });
     </script>
@@ -1814,6 +1843,9 @@ Ext.define("feature-cycle-time", {
     border-left-width: 1px;
     border-left-color: #e0e0e0;
     text-align: center;
+}
+.warning {
+    color: #cc0000;
 }
     </style>
 

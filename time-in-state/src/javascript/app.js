@@ -1,4 +1,4 @@
-Ext.define("feature-cycle-time", {
+Ext.define("time-in-state", {
     extend: 'Rally.app.App',
     componentCls: 'app',
     logger: new Rally.technicalservices.Logger(),
@@ -55,6 +55,7 @@ Ext.define("feature-cycle-time", {
         }
 
         var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
+
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 200,
             model: cycle_model,
@@ -64,23 +65,35 @@ Ext.define("feature-cycle-time", {
                 project: this.getContext().getProject()._ref,
                 projectScopeUp: this.getContext().getProjectScopeUp(),
                 projectScopeDown: this.getContext().getProjectScopeDown()
-            },
-            autoLoad: true,
-            listeners: {
-                load: function(store, records){
-                    _.each(records, function(r){
-                        r.calculate();
-                    });
-                }
             }
         });
+        store.load({
+                scope: this,
+                callback: function(records, operation, success){
+                    this.messages = [];
+                    var num_items = store.getTotalCount();
+                    this.messages.push(Ext.String.format('<div class="warning">Loading Revision History for {0} items....</div>', num_items));
+                    this._updateMessages();
+                    if (success){
+                        var promises = [];
+                        _.each(records, function(r){
+                            promises.push(r.calculate());
+                        });
+                        Deft.Promise.all(promises).then({
+                            scope: this,
+                            success: function(){
+                                this.messages.pop();
+                                this.messages.push(Ext.String.format('Revision history for all {0} artifacts has been loaded and time in state has been populated.', num_items));
+                                this._updateMessages();
+                            }
+                        });
+                    } else {
+                        Rally.ui.notify.Notifier.showError({message: 'Error loading artifact records: ' + operation.error.errors.join(',')});
+                    }
+                }
+        });
 
-        var columnCfgs = [];  //[{
-        //    text: 'Name',
-        //    dataIndex: 'Name',
-        //    _csvIgnoreRender: true,
-        //    flex: 3
-        //}];
+        var columnCfgs = [];
 
         _.each(display_fields,function(field){
             var displayName = field;
@@ -242,6 +255,16 @@ Ext.define("feature-cycle-time", {
             }
         });
 
+        header_ct.add({
+            xtype: 'container',
+            flex: 1,
+            itemId: 'ct-messages'
+        });
+
+    },
+    _updateMessages: function(){
+        var html = this.messages.join('');
+        this.down('#ct-messages').update(html);
     },
     isExternal: function(){
         return typeof(this.getAppId()) == 'undefined';
