@@ -3,11 +3,11 @@
 <head>
     <title>Artifact Time in State</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 11 2015 08:14:18 GMT-0600 (MDT) -->
+    <!--  Build Date: Mon Aug 24 2015 20:40:40 GMT-0700 (PDT) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 11 2015 08:14:18 GMT-0600 (MDT)";
-        var CHECKSUM = 89068677078;
+        var APP_BUILD_DATE = "Mon Aug 24 2015 20:40:40 GMT-0700 (PDT)";
+        var CHECKSUM = 99504855419;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -460,7 +460,6 @@ Ext.define('Rally.technicalservices.FileUtilities', {
         var fileNameToSaveAs = fileName;
 
         if (this.detectIE() >= 10){
-            console.log(window.navigator);
             window.navigator.msSaveBlob(textFileAsBlob, fileNameToSaveAs);
         } else {
 
@@ -522,7 +521,6 @@ Ext.define('Rally.technicalservices.FileUtilities', {
         return text;
     },
     scrubStringForXML: function(string){
-        console.log('scrub',string);
         if (string) {
             var scrubbed_string = string.replace(/&/g, '&amp;')
                 .replace(/</g, '&lt;')
@@ -618,7 +616,130 @@ Ext.define('Rally.technicalservices.FileUtilities', {
             csv.push('"' + node_values.join('","') + '"');
         });
         return csv.join('\r\n');
+    },
+    getCSVFromGridWithPaging:function(app, grid){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var store = Ext.create('Rally.data.wsapi.Store',{
+            fetch: grid.getStore().config.fetch,
+            filters: grid.getStore().config.filters,
+            model: grid.getStore().config.model,
+            pageSize: grid.getStore().pageSize
+        });
+
+        var columns = grid.columns;
+        var column_names = [];
+        var headers = [];
+
+        Ext.Array.each(columns,function(column){
+            if ( column.dataIndex || column.renderer ) {
+                column_names.push(column.dataIndex);
+                if ( column.csvText ) {
+                    headers.push(column.csvText);
+                } else {
+                    headers.push(column.text);
+                }
+            }
+        });
+
+        var record_count = grid.getStore().getTotalCount(),
+            page_size = grid.getStore().pageSize,
+            pages = Math.ceil(record_count/page_size),
+            promises = [];
+
+        for (var page = 1; page <= pages; page ++ ) {
+            promises.push(this.loadStorePage(app, grid, store, columns, page, pages));
+        }
+        Deft.Promise.all(promises).then({
+            success: function(csvs){
+                var csv = [];
+                csv.push('"' + headers.join('","') + '"');
+                _.each(csvs, function(c){
+                    _.each(c, function(line){
+                        csv.push(line);
+                    });
+                });
+                csv = csv.join('\r\n');
+                deferred.resolve(csv);
+                app.setLoading(false);
+            }
+        });
+        return deferred.promise;
+
+    },
+    loadStorePage: function(app, grid, store, columns, page, total_pages){
+        var deferred = Ext.create('Deft.Deferred');
+
+        var mock_meta_data = {
+            align: "right",
+            classes: [],
+            cellIndex: 9,
+            column: null,
+            columnIndex: 9,
+            innerCls: undefined,
+            recordIndex: 5,
+            rowIndex: 5,
+            style: "",
+            tdAttr: "",
+            tdCls: "x-grid-cell x-grid-td x-grid-cell-headerId-gridcolumn-1029 x-grid-cell-last x-unselectable",
+            unselectableAttr: "unselectable='on'"
+        }
+
+        store.loadPage(page, {
+            callback: function (records) {
+                var csv = [];
+                app.setLoading(Ext.String.format('Page {0} of {1} loaded',page, total_pages));
+
+                var promises = [];
+                _.each(records, function(r){
+                    promises.push(r.calculate());
+                });
+
+                Deft.Promise.all(promises).then({
+                    scope: this,
+                    success: function(){
+                        app.setLoading(false);
+                        for (var i = 0; i < records.length; i++) {
+                            var record = records[i],
+                                node_values = [];
+
+                            Ext.Array.each(columns, function (column) {
+                                if (column.xtype != 'rallyrowactioncolumn') {
+                                    if (column.dataIndex) {
+                                        var column_name = column.dataIndex;
+                                        var display_value = record.get(column_name);
+                                        if (!column._csvIgnoreRender && column.renderer) {
+                                            if (column.exportRenderer) {
+                                                display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                                            } else {
+                                                display_value = column.renderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
+                                            }
+                                        }
+                                        node_values.push(display_value);
+                                    } else {
+                                        var display_value = null;
+                                        if (!column._csvIgnoreRender && column.renderer) {
+                                            if (column.exportRenderer) {
+                                                display_value = column.exportRenderer(display_value, mock_meta_data, record, record, 0, 0, store, grid.getView());
+                                            } else {
+                                                display_value = column.renderer(display_value, mock_meta_data, record, record, 0, 0, store, grid.getView());
+                                            }
+                                            node_values.push(display_value);
+                                        }
+                                    }
+                                }
+                            }, this);
+                            csv.push('"' + node_values.join('","') + '"');
+                        }
+                        deferred.resolve(csv);
+                    }
+                });
+            },
+            scope: this
+        });
+        return deferred;
     }
+
 });
 
 
@@ -1482,23 +1603,20 @@ Ext.define("time-in-state", {
         var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
 
         var store = Ext.create('Rally.data.wsapi.Store',{
-            pageSize: 200,
+            pageSize: 25,
             model: cycle_model,
             fetch: fetch,
-            limit: 'Infinity',
+            //limit: 'Infinity',
             context: {
                 project: this.getContext().getProject()._ref,
                 projectScopeUp: this.getContext().getProjectScopeUp(),
                 projectScopeDown: this.getContext().getProjectScopeDown()
-            }
-        });
-        store.load({
+            },
+            listeners: {
                 scope: this,
-                callback: function(records, operation, success){
-                    this.messages = [];
-                    var num_items = store.getTotalCount();
-                    this.messages.push(Ext.String.format('<div class="warning">Loading Revision History for {0} items....</div>', num_items));
-                    this._updateMessages();
+                load: function(store, records, success){
+                    this.logger.log('Store Load', records.length);
+                    this.setLoading(true);
                     if (success){
                         var promises = [];
                         _.each(records, function(r){
@@ -1507,16 +1625,20 @@ Ext.define("time-in-state", {
                         Deft.Promise.all(promises).then({
                             scope: this,
                             success: function(){
-                                this.messages.pop();
-                                this.messages.push(Ext.String.format('Revision history for all {0} artifacts has been loaded and time in state has been populated.', num_items));
-                                this._updateMessages();
+                                this.setLoading(false);
+                            },
+                            failure: function(){
+                                this.setLoading(false);
                             }
                         });
                     } else {
-                        Rally.ui.notify.Notifier.showError({message: 'Error loading artifact records: ' + operation.error.errors.join(',')});
+                        this.setLoading(false);
+                        Rally.ui.notify.Notifier.showError({message: 'Error loading artifact records '});
                     }
                 }
+            }
         });
+        store.load();
 
         var columnCfgs = [];
 
@@ -1583,8 +1705,11 @@ Ext.define("time-in-state", {
         }
     },
     _export: function(){
-        var csv = Rally.technicalservices.FileUtilities.getCSVFromGrid(this.down('#grid-cycletime'));
-        Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+        Rally.technicalservices.FileUtilities.getCSVFromGridWithPaging(this, this.down('#grid-cycletime')).then({
+            success: function(csv){
+                Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+            }
+        });
     },
     _initApp: function(){
 

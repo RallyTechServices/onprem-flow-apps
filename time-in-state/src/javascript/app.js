@@ -57,23 +57,20 @@ Ext.define("time-in-state", {
         var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
 
         var store = Ext.create('Rally.data.wsapi.Store',{
-            pageSize: 200,
+            pageSize: 25,
             model: cycle_model,
             fetch: fetch,
-            limit: 'Infinity',
+            //limit: 'Infinity',
             context: {
                 project: this.getContext().getProject()._ref,
                 projectScopeUp: this.getContext().getProjectScopeUp(),
                 projectScopeDown: this.getContext().getProjectScopeDown()
-            }
-        });
-        store.load({
+            },
+            listeners: {
                 scope: this,
-                callback: function(records, operation, success){
-                    this.messages = [];
-                    var num_items = store.getTotalCount();
-                    this.messages.push(Ext.String.format('<div class="warning">Loading Revision History for {0} items....</div>', num_items));
-                    this._updateMessages();
+                load: function(store, records, success){
+                    this.logger.log('Store Load', records.length);
+                    this.setLoading(true);
                     if (success){
                         var promises = [];
                         _.each(records, function(r){
@@ -82,16 +79,20 @@ Ext.define("time-in-state", {
                         Deft.Promise.all(promises).then({
                             scope: this,
                             success: function(){
-                                this.messages.pop();
-                                this.messages.push(Ext.String.format('Revision history for all {0} artifacts has been loaded and time in state has been populated.', num_items));
-                                this._updateMessages();
+                                this.setLoading(false);
+                            },
+                            failure: function(){
+                                this.setLoading(false);
                             }
                         });
                     } else {
-                        Rally.ui.notify.Notifier.showError({message: 'Error loading artifact records: ' + operation.error.errors.join(',')});
+                        this.setLoading(false);
+                        Rally.ui.notify.Notifier.showError({message: 'Error loading artifact records '});
                     }
                 }
+            }
         });
+        store.load();
 
         var columnCfgs = [];
 
@@ -158,8 +159,11 @@ Ext.define("time-in-state", {
         }
     },
     _export: function(){
-        var csv = Rally.technicalservices.FileUtilities.getCSVFromGrid(this.down('#grid-cycletime'));
-        Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+        Rally.technicalservices.FileUtilities.getCSVFromGridWithPaging(this, this.down('#grid-cycletime')).then({
+            success: function(csv){
+                Rally.technicalservices.FileUtilities.saveAs(csv, 'export.csv');
+            }
+        });
     },
     _initApp: function(){
 
