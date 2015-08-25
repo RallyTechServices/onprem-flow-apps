@@ -1,4 +1,4 @@
-#Feature Cycle Time
+#Time in State
 
 <div>Bare bones Time-in-State App that parses Revision History to get state transitions and durations and displays them in a grid with exportable. &nbsp;Configurable model types (Portfolio Items or Stories), State field and Display fields. &nbsp;</div>
 
@@ -25,6 +25,4 @@ The app skips weekends and will behave as follows if an item is transitioned in 
 
 Durations are calculated in a fraction of a day (up to 2 decimal places).  If an item has a duration greater than 0 but less than 0.01, the duration will show up as 0.01.  
 
-This app parses the revision history after the grid is loaded.  If this app is scoped to a parent project with several artifacts, the app may seem sluggish and performance may be slow.  
-
-The app shouldn't be run in a project with more than 200 artifacts.  
+This app parses the revision history after the grid is loaded.  If this app is scoped to a parent project with several artifacts, the app may seem sluggish and performance may be slow during exporting.    
