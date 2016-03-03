@@ -101,7 +101,14 @@ Ext.define("time-in-state", {
             if (cycle_model && cycle_model.getField(field)){
                 displayName = cycle_model.getField(field).displayName;
             }
-            columnCfgs.push({text: displayName, dataIndex: field});
+            if (field === 'FormattedID'){
+                columnCfgs.push({text: displayName, dataIndex: field, exportRenderer: function(v){ return v; } });
+
+            } else {
+                columnCfgs.push({text: displayName, dataIndex: field});
+
+            }
+
         }, this);
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
