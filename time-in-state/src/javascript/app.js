@@ -8,7 +8,7 @@ Ext.define("time-in-state", {
             typePath: 'PortfolioItem/Feature',
             stateField: 'State',
             displayFields: ['Name','PreliminaryEstimate'],
-            query: ''
+            filterQuery: ''
         }
     },
     items: [
@@ -55,7 +55,7 @@ Ext.define("time-in-state", {
             display_fields = display_fields.split(',');
         }
 
-        var query = this.getSetting('query'),
+        var query = this.getSetting('filterQuery'),
             filters = [];
         if (query && query.length > 0){
             filters = Rally.data.wsapi.Filter.fromQueryString(query);
@@ -405,11 +405,10 @@ Ext.define("time-in-state", {
             },{
                 xtype: 'textarea',
                 fieldLabel: 'Query',
-                name: 'query',
+                name: 'filterQuery',
                 anchor: '100%',
                 cls: 'query-field',
                 labelAlign: 'right',
-                labelWidth: labelWidth,
                 margin: '0 70 0 0',
                 plugins: [
                     {
