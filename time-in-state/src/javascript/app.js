@@ -7,7 +7,8 @@ Ext.define("time-in-state", {
         defaultSettings: {
             typePath: 'PortfolioItem/Feature',
             stateField: 'State',
-            displayFields: ['Name','PreliminaryEstimate']
+            displayFields: ['Name','PreliminaryEstimate'],
+            query: ''
         }
     },
     items: [
@@ -54,12 +55,20 @@ Ext.define("time-in-state", {
             display_fields = display_fields.split(',');
         }
 
+        var query = this.getSetting('query'),
+            filters = [];
+        if (query && query.length > 0){
+            filters = Rally.data.wsapi.Filter.fromQueryString(query);
+            this.logger.log('query filter:', filters.toString());
+        }
+
         var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
 
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 25,
             model: cycle_model,
             fetch: fetch,
+            filters: filters,
             //limit: 'Infinity',
             context: {
                 project: this.getContext().getProject()._ref,
@@ -391,6 +400,34 @@ Ext.define("time-in-state", {
                     ready: function(type_cb){
                         this.refreshWithNewModelTypes([type_cb.getValue()]);
                         this.setDisabled(false);
+                    }
+                }
+            },{
+                xtype: 'textarea',
+                fieldLabel: 'Query',
+                name: 'query',
+                anchor: '100%',
+                cls: 'query-field',
+                labelAlign: 'right',
+                labelWidth: labelWidth,
+                margin: '0 70 0 0',
+                plugins: [
+                    {
+                        ptype: 'rallyhelpfield',
+                        helpId: 194
+                    },
+                    'rallyfieldvalidationui'
+                ],
+                validateOnBlur: false,
+                validateOnChange: false,
+                validator: function(value) {
+                    try {
+                        if (value) {
+                            Rally.data.wsapi.Filter.fromQueryString(value);
+                        }
+                        return true;
+                    } catch (e) {
+                        return e.message;
                     }
                 }
             }
