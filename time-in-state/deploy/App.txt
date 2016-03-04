@@ -3,11 +3,11 @@
 <head>
     <title>Artifact Time in State</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Aug 25 2015 08:03:42 GMT-0700 (PDT) -->
+    <!--  Build Date: Thu Mar 03 2016 16:30:08 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Aug 25 2015 08:03:42 GMT-0700 (PDT)";
-        var CHECKSUM = 99504859881;
+        var APP_BUILD_DATE = "Thu Mar 03 2016 16:30:08 GMT-0800 (PST)";
+        var CHECKSUM = 103651938031;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -708,7 +708,7 @@ Ext.define('Rally.technicalservices.FileUtilities', {
                                     if (column.dataIndex) {
                                         var column_name = column.dataIndex;
                                         var display_value = record.get(column_name);
-                                        if (!column._csvIgnoreRender && column.renderer) {
+                                        if (!column._csvIgnoreRender && (column.renderer || column.exportRenderer)) {
                                             if (column.exportRenderer) {
                                                 display_value = column.exportRenderer(display_value, mock_meta_data, record, 0, 0, store, grid.getView());
                                             } else {
@@ -729,7 +729,9 @@ Ext.define('Rally.technicalservices.FileUtilities', {
                                     }
                                 }
                             }, this);
-                            csv.push('"' + node_values.join('","') + '"');
+                           // console.log('node_values', node_values);
+                            node_values = _.map(node_values, function(v){ if (v) {return Ext.String.format("\"{0}\"", v.toString().replace(/"/g, "\"\""));} else { return ''; }});
+                            csv.push(node_values.join(','));
                         }
                         deferred.resolve(csv);
                     }
@@ -1501,7 +1503,7 @@ Ext.define('Rally.technicalservices.ModelBuilder',{
 
 Ext.override(Rally.ui.picker.FieldPicker, {
     _shouldShowField: function(field) {
-        var allowed_display_fields = ['Owner','Project','State','ScheduleState','Iteration','Release','PreliminaryEstimate','Parent','PortfolioItem'];
+        var allowed_display_fields = ['Owner','Project','State','ScheduleState','Iteration','Release','PreliminaryEstimate','Parent','PortfolioItem','PlanEstimate'];
         var forbidden_display_fields  = ['DragAndDropRank'];
         if (!field.hidden && field.attributeDefinition && !Ext.Array.contains(forbidden_display_fields, field.name)){
             var attr_def = field.attributeDefinition;
@@ -1509,10 +1511,9 @@ Ext.override(Rally.ui.picker.FieldPicker, {
             if ( attr_def.ElementName == "State" ) {
                 can_use = true;
             }
-
             if (attr_def.AttributeType == 'STRING' || attr_def.AttributeType == 'INTEGER' ||
             attr_def.AttributeType =='BOOLEAN' || attr_def.AttributeType == 'DECIMAL' ||
-            attr_def.AttributeType == 'DATE'){
+            attr_def.AttributeType == 'DATE' || attr_def.AttributeType == 'QUANTITY'){
                 can_use = true;
             }
 
@@ -1520,7 +1521,7 @@ Ext.override(Rally.ui.picker.FieldPicker, {
                 can_use = true;
             }
 
-            return can_use
+            return can_use;
         }
         return false;
     }
@@ -1553,7 +1554,8 @@ Ext.define("time-in-state", {
         defaultSettings: {
             typePath: 'PortfolioItem/Feature',
             stateField: 'State',
-            displayFields: ['Name','PreliminaryEstimate']
+            displayFields: ['Name','PreliminaryEstimate'],
+            filterQuery: ''
         }
     },
     items: [
@@ -1600,12 +1602,20 @@ Ext.define("time-in-state", {
             display_fields = display_fields.split(',');
         }
 
+        var query = this.getSetting('filterQuery'),
+            filters = [];
+        if (query && query.length > 0){
+            filters = Rally.data.wsapi.Filter.fromQueryString(query);
+            this.logger.log('query filter:', filters.toString());
+        }
+
         var fetch = ['RevisionHistory',stateField.name,'Revisions','FormattedID','Name','ObjectID'].concat(display_fields);
 
         var store = Ext.create('Rally.data.wsapi.Store',{
             pageSize: 25,
             model: cycle_model,
             fetch: fetch,
+            filters: filters,
             //limit: 'Infinity',
             context: {
                 project: this.getContext().getProject()._ref,
@@ -1647,7 +1657,14 @@ Ext.define("time-in-state", {
             if (cycle_model && cycle_model.getField(field)){
                 displayName = cycle_model.getField(field).displayName;
             }
-            columnCfgs.push({text: displayName, dataIndex: field});
+            if (field === 'FormattedID'){
+                columnCfgs.push({text: displayName, dataIndex: field, exportRenderer: function(v){ return v; } });
+
+            } else {
+                columnCfgs.push({text: displayName, dataIndex: field});
+
+            }
+
         }, this);
 
         var field = Rally.technicalservices.ModelBuilder.getTotalField(allowedValues);
@@ -1930,6 +1947,33 @@ Ext.define("time-in-state", {
                     ready: function(type_cb){
                         this.refreshWithNewModelTypes([type_cb.getValue()]);
                         this.setDisabled(false);
+                    }
+                }
+            },{
+                xtype: 'textarea',
+                fieldLabel: 'Query',
+                name: 'filterQuery',
+                anchor: '100%',
+                cls: 'query-field',
+                labelAlign: 'right',
+                margin: '0 70 0 0',
+                plugins: [
+                    {
+                        ptype: 'rallyhelpfield',
+                        helpId: 194
+                    },
+                    'rallyfieldvalidationui'
+                ],
+                validateOnBlur: false,
+                validateOnChange: false,
+                validator: function(value) {
+                    try {
+                        if (value) {
+                            Rally.data.wsapi.Filter.fromQueryString(value);
+                        }
+                        return true;
+                    } catch (e) {
+                        return e.message;
                     }
                 }
             }

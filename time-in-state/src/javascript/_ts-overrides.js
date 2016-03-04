@@ -1,6 +1,6 @@
 Ext.override(Rally.ui.picker.FieldPicker, {
     _shouldShowField: function(field) {
-        var allowed_display_fields = ['Owner','Project','State','ScheduleState','Iteration','Release','PreliminaryEstimate','Parent','PortfolioItem'];
+        var allowed_display_fields = ['Owner','Project','State','ScheduleState','Iteration','Release','PreliminaryEstimate','Parent','PortfolioItem','PlanEstimate'];
         var forbidden_display_fields  = ['DragAndDropRank'];
         if (!field.hidden && field.attributeDefinition && !Ext.Array.contains(forbidden_display_fields, field.name)){
             var attr_def = field.attributeDefinition;
@@ -8,10 +8,9 @@ Ext.override(Rally.ui.picker.FieldPicker, {
             if ( attr_def.ElementName == "State" ) {
                 can_use = true;
             }
-
             if (attr_def.AttributeType == 'STRING' || attr_def.AttributeType == 'INTEGER' ||
             attr_def.AttributeType =='BOOLEAN' || attr_def.AttributeType == 'DECIMAL' ||
-            attr_def.AttributeType == 'DATE'){
+            attr_def.AttributeType == 'DATE' || attr_def.AttributeType == 'QUANTITY'){
                 can_use = true;
             }
 
@@ -19,7 +18,7 @@ Ext.override(Rally.ui.picker.FieldPicker, {
                 can_use = true;
             }
 
-            return can_use
+            return can_use;
         }
         return false;
     }
