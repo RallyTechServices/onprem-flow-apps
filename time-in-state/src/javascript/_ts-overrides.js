@@ -8,10 +8,9 @@ Ext.override(Rally.ui.picker.FieldPicker, {
             if ( attr_def.ElementName == "State" ) {
                 can_use = true;
             }
-            console.log('attri_def', field.name, attr_def.AttributeType);
             if (attr_def.AttributeType == 'STRING' || attr_def.AttributeType == 'INTEGER' ||
             attr_def.AttributeType =='BOOLEAN' || attr_def.AttributeType == 'DECIMAL' ||
-            attr_def.AttributeType == 'DATE'){
+            attr_def.AttributeType == 'DATE' || attr_def.AttributeType == 'QUANTITY'){
                 can_use = true;
             }
 

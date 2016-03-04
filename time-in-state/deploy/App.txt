@@ -3,11 +3,11 @@
 <head>
     <title>Artifact Time in State</title>
     <!--  (c) 2015 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Thu Mar 03 2016 15:55:12 GMT-0800 (PST) -->
+    <!--  Build Date: Thu Mar 03 2016 16:00:24 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Thu Mar 03 2016 15:55:12 GMT-0800 (PST)";
-        var CHECKSUM = 100108028437;
+        var APP_BUILD_DATE = "Thu Mar 03 2016 16:00:24 GMT-0800 (PST)";
+        var CHECKSUM = 100264321873;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -1509,10 +1509,9 @@ Ext.override(Rally.ui.picker.FieldPicker, {
             if ( attr_def.ElementName == "State" ) {
                 can_use = true;
             }
-
             if (attr_def.AttributeType == 'STRING' || attr_def.AttributeType == 'INTEGER' ||
             attr_def.AttributeType =='BOOLEAN' || attr_def.AttributeType == 'DECIMAL' ||
-            attr_def.AttributeType == 'DATE'){
+            attr_def.AttributeType == 'DATE' || attr_def.AttributeType == 'QUANTITY'){
                 can_use = true;
             }
 
@@ -1520,7 +1519,7 @@ Ext.override(Rally.ui.picker.FieldPicker, {
                 can_use = true;
             }
 
-            return can_use
+            return can_use;
         }
         return false;
     }
